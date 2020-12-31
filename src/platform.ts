@@ -1,121 +1,106 @@
-import { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service, Characteristic } from 'homebridge';
+import {
+    Device,
+    BridgeFinder,
+    SmartBridge,
+    SecretStorage,
+} from 'lutron-leap';
 
-import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
-import { ExamplePlatformAccessory } from './platformAccessory';
+import {
+    API,
+    APIEvent,
+    CharacteristicEventTypes,
+    CharacteristicSetCallback,
+    CharacteristicValue,
+    DynamicPlatformPlugin,
+    HAP,
+    Logging,
+    PlatformAccessory,
+    PlatformAccessoryEvent,
+    PlatformConfig,
+} from "homebridge";
 
-/**
- * HomebridgePlatform
- * This class is the main constructor for your plugin, this is where you should
- * parse the user config and discover/register accessories with Homebridge.
- */
-export class ExampleHomebridgePlatform implements DynamicPlatformPlugin {
-  public readonly Service: typeof Service = this.api.hap.Service;
-  public readonly Characteristic: typeof Characteristic = this.api.hap.Characteristic;
+import { PLUGIN_NAME, PLATFORM_NAME } from './settings';
+import { SerenaTiltOnlyWoodBlinds } from './SerenaTiltOnlyWoodBlinds';
 
-  // this is used to track restored cached accessories
-  public readonly accessories: PlatformAccessory[] = [];
+let hap: HAP;
+let Accessory: typeof PlatformAccessory;
 
-  constructor(
-    public readonly log: Logger,
-    public readonly config: PlatformConfig,
-    public readonly api: API,
-  ) {
-    this.log.debug('Finished initializing platform:', this.config.name);
+export class LutronCasetaLeap implements DynamicPlatformPlugin {
 
-    // When this event is fired it means Homebridge has restored all cached accessories from disk.
-    // Dynamic Platform plugins should only register new accessories after this event was fired,
-    // in order to ensure they weren't added to homebridge already. This event can also be used
-    // to start discovery of new accessories.
-    this.api.on('didFinishLaunching', () => {
-      log.debug('Executed didFinishLaunching callback');
-      // run the method to discover / register your devices as accessories
-      this.discoverDevices();
-    });
-  }
+    private readonly accessories: PlatformAccessory[] = [];
+    private finder: BridgeFinder;
+    private secrets: Map<string, SecretStorage> = new Map();
+    private bridges: Map<string, SmartBridge> = new Map();
 
-  /**
-   * This function is invoked when homebridge restores cached accessories from disk at startup.
-   * It should be used to setup event handlers for characteristics and update respective values.
-   */
-  configureAccessory(accessory: PlatformAccessory) {
-    this.log.info('Loading accessory from cache:', accessory.displayName);
+    constructor(
+        public readonly log: Logging,
+        public readonly config: PlatformConfig,
+        public readonly api: API
+    ) {
 
-    // add the restored accessory to the accessories cache so we can track if it has already been registered
-    this.accessories.push(accessory);
-  }
+        log.info("LutronCasetaLeap starting up...");
 
-  /**
-   * This is an example method showing how to register discovered accessories.
-   * Accessories must only be registered once, previously created accessories
-   * must not be registered again to prevent "duplicate UUID" errors.
-   */
-  discoverDevices() {
+        this.finder = new BridgeFinder(this.secrets);
+        this.finder.on("discovered", this.handleBridgeDiscovery);
 
-    // EXAMPLE ONLY
-    // A real plugin you would discover accessories from the local network, cloud services
-    // or a user-defined array in the platform config.
-    const exampleDevices = [
-      {
-        exampleUniqueId: 'ABCD',
-        exampleDisplayName: 'Bedroom',
-      },
-      {
-        exampleUniqueId: 'EFGH',
-        exampleDisplayName: 'Kitchen',
-      },
-    ];
+        log.info("Example platform finished initializing!");
 
-    // loop over the discovered devices and register each one if it has not already been registered
-    for (const device of exampleDevices) {
-
-      // generate a unique id for the accessory this should be generated from
-      // something globally unique, but constant, for example, the device serial
-      // number or MAC address
-      const uuid = this.api.hap.uuid.generate(device.exampleUniqueId);
-
-      // see if an accessory with the same uuid has already been registered and restored from
-      // the cached devices we stored in the `configureAccessory` method above
-      const existingAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
-
-      if (existingAccessory) {
-        // the accessory already exists
-        if (device) {
-          this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName);
-
-          // if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. eg.:
-          // existingAccessory.context.device = device;
-          // this.api.updatePlatformAccessories([existingAccessory]);
-
-          // create the accessory handler for the restored accessory
-          // this is imported from `platformAccessory.ts`
-          new ExamplePlatformAccessory(this, existingAccessory);
-          
-          // update accessory cache with any changes to the accessory details and information
-          this.api.updatePlatformAccessories([existingAccessory]);
-        } else if (!device) {
-          // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, eg.:
-          // remove platform accessories when no longer present
-          this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [existingAccessory]);
-          this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
-        }
-      } else {
-        // the accessory does not yet exist, so we need to create it
-        this.log.info('Adding new accessory:', device.exampleDisplayName);
-
-        // create a new accessory
-        const accessory = new this.api.platformAccessory(device.exampleDisplayName, uuid);
-
-        // store a copy of the device object in the `accessory.context`
-        // the `context` property can be used to store any data about the accessory you may need
-        accessory.context.device = device;
-
-        // create the accessory handler for the newly create accessory
-        // this is imported from `platformAccessory.ts`
-        new ExamplePlatformAccessory(this, accessory);
-
-        // link the accessory to your platform
-        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-      }
+        /*
+         * When this event is fired, homebridge restored all cached accessories from disk and did call their respective
+         * `configureAccessory` method for all of them. Dynamic Platform plugins should only register new accessories
+         * after this event was fired, in order to ensure they weren't added to homebridge already.
+         * This event can also be used to start discovery of new accessories.
+         */
+        api.on(APIEvent.DID_FINISH_LAUNCHING, () => {
+            log.info("Got DID_FINISH_LAUNCHING");
+        });
     }
-  }
+
+    /*
+     * This function is invoked when homebridge restores cached accessories from disk at startup.
+     * It should be used to setup event handlers for characteristics and update respective values.
+     */
+    configureAccessory(accessory: PlatformAccessory): void {
+        this.log("Configuring accessory %s", accessory.displayName);
+
+        accessory.on(PlatformAccessoryEvent.IDENTIFY, () => {
+            this.log("%s identified!", accessory.displayName);
+        });
+
+        accessory.getService(hap.Service.Lightbulb)!.getCharacteristic(hap.Characteristic.On)
+        .on(CharacteristicEventTypes.SET, (value: CharacteristicValue, callback: CharacteristicSetCallback) => {
+            this.log.info("%s Light was set to: " + value);
+            callback();
+        });
+
+        this.accessories.push(accessory);
+    }
+
+    // ----- CUSTOM METHODS
+
+    private handleBridgeDiscovery(bridge: SmartBridge) {
+        if (this.bridges.has(bridge.bridgeID)) {
+            // we've already discovered this bridge, move along
+            return;
+        }
+        this.bridges.set(bridge.bridgeID, bridge);
+
+        bridge.getDeviceInfo().then((devices: Device[]) => {
+            for (let d of devices) {
+                let uuid = this.api.hap.uuid.generate(d.SerialNumber);
+                switch (d.DeviceType) {
+                    case "SerenaTiltOnlyWoodBlinds": {
+                        const accessory = new this.api.platformAccessory(d.FullyQualifiedName.join(' '), uuid);
+                        accessory.context.device = d;
+                        new SerenaTiltOnlyWoodBlinds(this, accessory); // mutates accessory
+                        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+                        this.accessories.push(accessory);
+                        break;
+                    }
+                    default:
+                        this.log.info("Got unimplemented device type ", d.DeviceType, ", skipping");
+                }
+            }
+        });
+    }
 }
