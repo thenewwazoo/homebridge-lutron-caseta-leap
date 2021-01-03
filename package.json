@@ -1,16 +1,16 @@
 {
   "private": true,
   "displayName": "Plugin Name",
-  "name": "homebridge-plugin-name",
-  "version": "1.0.0",
-  "description": "A short description about what your plugin does.",
+  "name": "homebridge-lutron-caseta-leap",
+  "version": "0.0.1",
+  "description": "Support for the Lutron Caseta Smart Bridge 2 (non-pro)",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git://github.com/USERNAME/GITHUB_PROJECT_NAME.git"
+    "url": "git://github.com/thenewwazoo/homebridge-lutron-caseta-leap.git"
   },
   "bugs": {
-    "url": "https://github.com/USERNAME/GITHUB_PROJECT_NAME/issues"
+    "url": "https://github.com/thenewwazoo/homebridge-lutron-caseta-leap/issues"
   },
   "engines": {
     "node": ">=10.17.0",
@@ -18,7 +18,7 @@
   },
   "main": "dist/index.js",
   "scripts": {
-    "lint": "eslint src/**.ts --max-warnings=0",
+    "lint": "eslint src/**.ts --max-warnings=0 --fix",
     "watch": "npm run build && npm link && nodemon",
     "build": "rimraf ./dist && tsc",
     "prepublishOnly": "npm run lint && npm run build"

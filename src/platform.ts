@@ -17,33 +17,34 @@ import {
     PlatformAccessory,
     PlatformAccessoryEvent,
     PlatformConfig,
-} from "homebridge";
+} from 'homebridge';
 
 import { PLUGIN_NAME, PLATFORM_NAME } from './settings';
 import { SerenaTiltOnlyWoodBlinds } from './SerenaTiltOnlyWoodBlinds';
-
-let hap: HAP;
-let Accessory: typeof PlatformAccessory;
 
 export class LutronCasetaLeap implements DynamicPlatformPlugin {
 
     private readonly accessories: PlatformAccessory[] = [];
     private finder: BridgeFinder;
-    private secrets: Map<string, SecretStorage> = new Map();
+    private secrets: Map<string, SecretStorage>;
     private bridges: Map<string, SmartBridge> = new Map();
 
     constructor(
         public readonly log: Logging,
         public readonly config: PlatformConfig,
-        public readonly api: API
+        public readonly api: API,
     ) {
 
-        log.info("LutronCasetaLeap starting up...");
+        log.info('LutronCasetaLeap starting up...');
+        log.info('config is', config);
+
+        this.secrets = this.secretsFromConfig(config);
+        log.info('secrets are', JSON.stringify(this.secrets));
 
         this.finder = new BridgeFinder(this.secrets);
-        this.finder.on("discovered", this.handleBridgeDiscovery);
+        this.finder.on('discovered', this.handleBridgeDiscovery.bind(this));
 
-        log.info("Example platform finished initializing!");
+        log.info('Example platform finished initializing!');
 
         /*
          * When this event is fired, homebridge restored all cached accessories from disk and did call their respective
@@ -52,8 +53,27 @@ export class LutronCasetaLeap implements DynamicPlatformPlugin {
          * This event can also be used to start discovery of new accessories.
          */
         api.on(APIEvent.DID_FINISH_LAUNCHING, () => {
-            log.info("Got DID_FINISH_LAUNCHING");
+            log.info('Got DID_FINISH_LAUNCHING');
         });
+    }
+
+    secretsFromConfig(config: PlatformConfig): Map<string, SecretStorage> {
+        const out = new Map();
+        for (const key in <any>config.secrets) {
+            this.log.info('inspecting', key);
+            const value: any = (<any>config).secrets[key];
+            this.log.info('has content', JSON.stringify(value));
+            if (typeof value === 'object' && value !== null &&
+                'ca' in value && 'cert' in value && 'key' in value) {
+                out.set(key, {
+                    ca: value.ca,
+                    key: value.key,
+                    cert: value.cert,
+                });
+            }
+        }
+        this.log.info('done! map is', out);
+        return out;
     }
 
     /*
@@ -61,19 +81,10 @@ export class LutronCasetaLeap implements DynamicPlatformPlugin {
      * It should be used to setup event handlers for characteristics and update respective values.
      */
     configureAccessory(accessory: PlatformAccessory): void {
-        this.log("Configuring accessory %s", accessory.displayName);
+        this.log('Configuring accessory %s', accessory.displayName);
+        this.log.info('the accessory is kinda like', JSON.stringify(accessory));
 
-        accessory.on(PlatformAccessoryEvent.IDENTIFY, () => {
-            this.log("%s identified!", accessory.displayName);
-        });
-
-        accessory.getService(hap.Service.Lightbulb)!.getCharacteristic(hap.Characteristic.On)
-        .on(CharacteristicEventTypes.SET, (value: CharacteristicValue, callback: CharacteristicSetCallback) => {
-            this.log.info("%s Light was set to: " + value);
-            callback();
-        });
-
-        this.accessories.push(accessory);
+        //        this.accessories.push(accessory);
     }
 
     // ----- CUSTOM METHODS
@@ -86,10 +97,11 @@ export class LutronCasetaLeap implements DynamicPlatformPlugin {
         this.bridges.set(bridge.bridgeID, bridge);
 
         bridge.getDeviceInfo().then((devices: Device[]) => {
-            for (let d of devices) {
-                let uuid = this.api.hap.uuid.generate(d.SerialNumber);
+            for (const d of devices) {
+                const uuid = this.api.hap.uuid.generate(d.SerialNumber.toString());
                 switch (d.DeviceType) {
-                    case "SerenaTiltOnlyWoodBlinds": {
+                    case 'SerenaTiltOnlyWoodBlind': {
+                        this.log.info('found a blind:', d.FullyQualifiedName.join(' '));
                         const accessory = new this.api.platformAccessory(d.FullyQualifiedName.join(' '), uuid);
                         accessory.context.device = d;
                         new SerenaTiltOnlyWoodBlinds(this, accessory); // mutates accessory
@@ -98,7 +110,7 @@ export class LutronCasetaLeap implements DynamicPlatformPlugin {
                         break;
                     }
                     default:
-                        this.log.info("Got unimplemented device type ", d.DeviceType, ", skipping");
+                        this.log.info('Got unimplemented device type', d.DeviceType, ', skipping');
                 }
             }
         });

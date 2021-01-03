@@ -1,10 +1,9 @@
 import {
-    Characteristic,
     Service,
     PlatformAccessory,
     CharacteristicValue,
     CharacteristicSetCallback,
-    CharacteristicGetCallback
+    CharacteristicGetCallback,
 } from 'homebridge';
 
 import { LutronCasetaLeap } from './platform';
@@ -17,11 +16,11 @@ export class SerenaTiltOnlyWoodBlinds {
         private readonly platform: LutronCasetaLeap,
         private readonly accessory: PlatformAccessory,
     ) {
-        let d: Device = accessory.context.device;
+        const d: Device = accessory.context.device;
         this.accessory.getService(this.platform.api.hap.Service.AccessoryInformation)!
-        .setCharacteristic(this.platform.api.hap.Characteristic.Manufacturer, 'Lutron Electronics Co., Inc')
-        .setCharacteristic(this.platform.api.hap.Characteristic.Model, d.ModelNumber)
-        .setCharacteristic(this.platform.api.hap.Characteristic.SerialNumber, d.SerialNumber);
+            .setCharacteristic(this.platform.api.hap.Characteristic.Manufacturer, 'Lutron Electronics Co., Inc')
+            .setCharacteristic(this.platform.api.hap.Characteristic.Model, d.ModelNumber)
+            .setCharacteristic(this.platform.api.hap.Characteristic.SerialNumber, d.SerialNumber);
 
         this.service =
             this.accessory.getService(this.platform.api.hap.Service.WindowCovering) ||
@@ -31,28 +30,28 @@ export class SerenaTiltOnlyWoodBlinds {
 
         // create handlers for required characteristics
         this.service.getCharacteristic(this.platform.api.hap.Characteristic.CurrentPosition)
-        .on(this.platform.api.hap.CharacteristicEventTypes.GET, this.handleCurrentPositionGet.bind(this));
+            .on(this.platform.api.hap.CharacteristicEventTypes.GET, this.handleCurrentPositionGet.bind(this));
 
         this.service.getCharacteristic(this.platform.api.hap.Characteristic.TargetPosition)
-        .on(this.platform.api.hap.CharacteristicEventTypes.GET, this.handleTargetPositionGet.bind(this))
-        .on(this.platform.api.hap.CharacteristicEventTypes.SET, this.handleTargetPositionSet.bind(this));
+            .on(this.platform.api.hap.CharacteristicEventTypes.GET, this.handleTargetPositionGet.bind(this))
+            .on(this.platform.api.hap.CharacteristicEventTypes.SET, this.handleTargetPositionSet.bind(this));
 
         this.service.getCharacteristic(this.platform.api.hap.Characteristic.PositionState)
-        .on(this.platform.api.hap.CharacteristicEventTypes.GET, this.handlePositionStateGet.bind(this));
+            .on(this.platform.api.hap.CharacteristicEventTypes.GET, this.handlePositionStateGet.bind(this));
     }
 
     handleCurrentPositionGet(cb: CharacteristicGetCallback): void {
-        this.platform.log.info("blinds were asked for current position");
+        this.platform.log.info('blinds were asked for current position');
         cb(null, 50);
     }
 
     handleTargetPositionGet(cb: CharacteristicGetCallback): void {
-        this.platform.log.info("blinds were asked for target position");
+        this.platform.log.info('blinds were asked for target position');
         cb(null, 50);
     }
 
     handleTargetPositionSet(value: CharacteristicValue, cb: CharacteristicSetCallback): void {
-        this.platform.log.info("blinds got set position", value);
+        this.platform.log.info('blinds got set position', value);
         cb(null);
     }
 

@@ -1,16 +1,74 @@
 {
-  "pluginAlias": "ExampleHomebridgePlugin",
+  "pluginAlias": "LutronCasetaLeap",
   "pluginType": "platform",
   "singular": true,
   "schema": {
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "default": {},
+    "examples": [
+        {
+            "032e7e88": {
+                "ca": "MIIC3DCCAoKgAwIBAgIBATAKBggqh...",
+                "key": "MIIEvAIBADANBgkqhkiG9w0BAQEFA...",
+                "cert": "MIICGTCCAcCgAwIBAgIBATAKBggqh..."
+            }
+        }
+    ],
+    "title": "The bridge authentication secrets listing schema",
     "type": "object",
     "properties": {
-      "name": {
-        "title": "Name",
-        "type": "string",
-        "required": true,
-        "default": "Example Dynamic Platform"
-      }
-    }
-  }
+        "032e7e88": {
+            "$id": "#/properties/032e7e88",
+            "default": {},
+            "description": "A bridge's authentication secrets, keyed by the bridge ID (hex representation of the serial number).",
+            "examples": [
+                {
+                    "ca": "MIIC3DCCAoKgAwIBAgIBATAKBggqh...",
+                    "key": "MIIEvAIBADANBgkqhkiG9w0BAQEFA...",
+                    "cert": "MIICGTCCAcCgAwIBAgIBATAKBggqh..."
+                }
+            ],
+            "required": [
+                "ca",
+                "key",
+                "cert"
+            ],
+            "title": "The bridge authentication secrets schema",
+            "type": "object",
+            "properties": {
+                "ca": {
+                    "$id": "#/properties/032e7e88/properties/ca",
+                    "type": "string",
+                    "title": "The ca schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": "",
+                    "examples": [
+                        "MIIC3DCCAoKgAwIBAgIBATAKBggqh..."
+                    ]
+                },
+                "key": {
+                    "$id": "#/properties/032e7e88/properties/key",
+                    "type": "string",
+                    "title": "The key schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": "",
+                    "examples": [
+                        "MIIEvAIBADANBgkqhkiG9w0BAQEFA..."
+                    ]
+                },
+                "cert": {
+                    "$id": "#/properties/032e7e88/properties/cert",
+                    "type": "string",
+                    "title": "The cert schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": "",
+                    "examples": [
+                        "MIICGTCCAcCgAwIBAgIBATAKBggqh..."
+                    ]
+                }
+            },
+            "additionalProperties": true
+        }
+    },
+    "additionalProperties": true
 }
