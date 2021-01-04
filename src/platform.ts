@@ -104,7 +104,7 @@ export class LutronCasetaLeap implements DynamicPlatformPlugin {
                         this.log.info('found a blind:', d.FullyQualifiedName.join(' '));
                         const accessory = new this.api.platformAccessory(d.FullyQualifiedName.join(' '), uuid);
                         accessory.context.device = d;
-                        new SerenaTiltOnlyWoodBlinds(this, accessory); // mutates accessory
+                        new SerenaTiltOnlyWoodBlinds(this, accessory, bridge); // mutates accessory
                         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
                         this.accessories.push(accessory);
                         break;
