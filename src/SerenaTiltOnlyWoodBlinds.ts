@@ -77,24 +77,12 @@ export class SerenaTiltOnlyWoodBlinds {
         return adj_val;
     }
 
-    /*
-    handleTargetPositionGet(cb: CharacteristicGetCallback): void {
-        this.platform.log.info('blinds were asked for target position');
-        cb(null, 50);
-    }
-    */
-
     async handleTargetPositionSet(value: CharacteristicValue): Promise<void> {
         const adj_val = Number(value) / 2;
         this.platform.log.info('blinds', this.device.FullyQualifiedName.join(' '), 'were set to adjusted value', adj_val);
         const bridge = await this.bridge;
         await bridge.setBlindsTilt(this.device, adj_val);
 
-        /*
-        this.accessory.getService(this.platform.api.hap.Service.WindowCovering)!
-                .getCharacteristic(this.platform.api.hap.Characteristic.TargetPosition)
-                .updateValue(value);
-        */
     }
 
     handlePositionStateGet(cb: CharacteristicGetCallback): void {

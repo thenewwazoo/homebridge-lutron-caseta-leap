@@ -3,72 +3,64 @@
   "pluginType": "platform",
   "singular": true,
   "schema": {
-    "$schema": "http://json-schema.org/draft-07/schema",
-    "default": {},
-    "examples": [
-        {
-            "032e7e88": {
-                "ca": "MIIC3DCCAoKgAwIBAgIBATAKBggqh...",
-                "key": "MIIEvAIBADANBgkqhkiG9w0BAQEFA...",
-                "cert": "MIICGTCCAcCgAwIBAgIBATAKBggqh..."
-            }
-        }
-    ],
-    "title": "The bridge authentication secrets listing schema",
     "type": "object",
     "properties": {
-        "032e7e88": {
-            "$id": "#/properties/032e7e88",
-            "default": {},
-            "description": "A bridge's authentication secrets, keyed by the bridge ID (hex representation of the serial number).",
-            "examples": [
-                {
-                    "ca": "MIIC3DCCAoKgAwIBAgIBATAKBggqh...",
-                    "key": "MIIEvAIBADANBgkqhkiG9w0BAQEFA...",
-                    "cert": "MIICGTCCAcCgAwIBAgIBATAKBggqh..."
-                }
-            ],
-            "required": [
-                "ca",
-                "key",
-                "cert"
-            ],
-            "title": "The bridge authentication secrets schema",
-            "type": "object",
-            "properties": {
-                "ca": {
-                    "$id": "#/properties/032e7e88/properties/ca",
-                    "type": "string",
-                    "title": "The ca schema",
-                    "description": "An explanation about the purpose of this instance.",
-                    "default": "",
-                    "examples": [
-                        "MIIC3DCCAoKgAwIBAgIBATAKBggqh..."
-                    ]
+        "secrets": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "bridgeid": { "type": "string" },
+                    "ca": { "type": "string" },
+                    "key": { "type": "string" },
+                    "cert": { "type": "string" }
                 },
-                "key": {
-                    "$id": "#/properties/032e7e88/properties/key",
-                    "type": "string",
-                    "title": "The key schema",
-                    "description": "An explanation about the purpose of this instance.",
-                    "default": "",
-                    "examples": [
-                        "MIIEvAIBADANBgkqhkiG9w0BAQEFA..."
-                    ]
-                },
-                "cert": {
-                    "$id": "#/properties/032e7e88/properties/cert",
-                    "type": "string",
-                    "title": "The cert schema",
-                    "description": "An explanation about the purpose of this instance.",
-                    "default": "",
-                    "examples": [
-                        "MIICGTCCAcCgAwIBAgIBATAKBggqh..."
-                    ]
-                }
-            },
-            "additionalProperties": true
+                "required": ["ca", "cert", "key"]
+            }
         }
-    },
-    "additionalProperties": true
+    }
+  },
+  "layout": [
+      {"key": "secrets",
+      "type": "array",
+      "listItems": 1,
+      "items": [ {
+          "type": "div",
+          "displayFlex": true,
+          "items": [
+              {
+                  "key": "secrets[].bridgeid",
+                  "flex": "1 1 50px",
+                  "notitle": false,
+                  "title": "Bridge ID Number (hex of serial number)",
+                  "placeholder": "Bridge ID",
+                  "type": "string"
+              },
+              {
+                  "key": "secrets[].ca",
+                  "flex": "200px",
+                  "title": "CA certificate",
+                  "placeholder": "-----BEGIN CERTIFICATE-----...",
+                  "type": "textarea"
+              },
+              {
+                  "key": "secrets[].key",
+                  "flex": "200px",
+                  "title": "Private key",
+                  "placeholder": "-----BEGIN PRIVATE KEY-----...",
+                  "type": "textarea"
+              },
+              {
+                  "key": "secrets[].cert",
+                  "flex": "200px",
+                  "title": "Signed certificate",
+                  "placeholder": "-----BEGIN CERTIFICATE-----...",
+                  "type": "textarea"
+              }
+            ]
+      }
+      ]
+      }
+  ]
 }
+

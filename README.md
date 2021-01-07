@@ -1,16 +1,18 @@
 A plugin that extends Homekit support for the Lutron Smart Bridge 2. Specifically, this adds support for the `SerenaTiltOnlyWoodBlind` device, which is all I care about at the moment. :)
 
 To configure it:
-```
+```json
 {
     "platform": "LutronCasetaLeap",
-    "secrets": {
-        "$bridge_id": { // this is the hex representation of your bridge's serial number. instructions eventually
-            "ca": "-----BEGIN CERTIFICATE-----\nMII...",
-            "key": "-----BEGIN PRIVATE KEY-----\nMII...",
-            "cert": "-----BEGIN CERTIFICATE-----\nMII...",
-        }
-    }
+        "secrets": [
+            {
+                "bridgeid": "0A1B2C3D", // this is the hex representation of your bridge's serial number. instructions eventually
+                "ca": "-----BEGIN CERTIFICATE-----\nMII...",
+                "key": "-----BEGIN PRIVATE KEY-----\nMII...",
+                "cert": "-----BEGIN CERTIFICATE-----\nMII..."
+            },
+            { ... }
+        ]
 }
 ```
 

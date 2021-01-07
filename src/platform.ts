@@ -27,6 +27,14 @@ interface PlatformEvents {
     unsolicited: (response: Response) => void;
 }
 
+// see config.schema.json
+interface BridgeAuthEntry {
+    bridgeid: string;
+    ca: string;
+    key: string;
+    cert: string;
+}
+
 export class LutronCasetaLeap
     extends (EventEmitter as new () => TypedEmitter<PlatformEvents>)
     implements DynamicPlatformPlugin {
@@ -45,7 +53,6 @@ export class LutronCasetaLeap
         super();
 
         log.info('LutronCasetaLeap starting up...');
-        log.info('config is', config);
 
         this.secrets = this.secretsFromConfig(config);
 
@@ -67,18 +74,12 @@ export class LutronCasetaLeap
 
     secretsFromConfig(config: PlatformConfig): Map<string, SecretStorage> {
         const out = new Map();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        for (const key in <any>config.secrets) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const value: any = (<any>config).secrets[key];
-            if (typeof value === 'object' && value !== null &&
-                'ca' in value && 'cert' in value && 'key' in value) {
-                out.set(key, {
-                    ca: value.ca,
-                    key: value.key,
-                    cert: value.cert,
-                });
-            }
+        for (const entry of config.secrets as Array<BridgeAuthEntry>) {
+            out.set(entry.bridgeid, {
+                ca: entry.ca,
+                key: entry.key,
+                cert: entry.cert,
+            });
         }
         return out;
     }
@@ -159,7 +160,7 @@ export class LutronCasetaLeap
     }
 
     handleUnsolicitedMessage(bridgeID: string, response: Response): void {
-        this.log.info('bridge', bridgeID, 'got unsolicited message', response);
+        this.log.debug('bridge', bridgeID, 'got unsolicited message', response);
         // publish the message, and let the accessories figure out who it's for
         this.emit('unsolicited', response);
     }
