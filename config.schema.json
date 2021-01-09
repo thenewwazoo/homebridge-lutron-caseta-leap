@@ -39,21 +39,21 @@
               {
                   "key": "secrets[].ca",
                   "flex": "200px",
-                  "title": "CA certificate",
+                  "title": "CA certificate (caseta-bridge.crt)",
                   "placeholder": "-----BEGIN CERTIFICATE-----...",
                   "type": "textarea"
               },
               {
                   "key": "secrets[].key",
                   "flex": "200px",
-                  "title": "Private key",
+                  "title": "Private key (caseta.key)",
                   "placeholder": "-----BEGIN PRIVATE KEY-----...",
                   "type": "textarea"
               },
               {
                   "key": "secrets[].cert",
                   "flex": "200px",
-                  "title": "Signed certificate",
+                  "title": "Signed certificate (caseta.crt)",
                   "placeholder": "-----BEGIN CERTIFICATE-----...",
                   "type": "textarea"
               }

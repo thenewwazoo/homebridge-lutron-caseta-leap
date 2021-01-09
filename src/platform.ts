@@ -75,7 +75,7 @@ export class LutronCasetaLeap
     secretsFromConfig(config: PlatformConfig): Map<string, SecretStorage> {
         const out = new Map();
         for (const entry of config.secrets as Array<BridgeAuthEntry>) {
-            out.set(entry.bridgeid, {
+            out.set(entry.bridgeid.toLowerCase(), {
                 ca: entry.ca,
                 key: entry.key,
                 cert: entry.cert,
