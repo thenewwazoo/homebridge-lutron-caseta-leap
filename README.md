@@ -1,5 +1,7 @@
 # LutronCasetaLeap
 
+[![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
+
 This is a plugin that interfaces between Homebridge (and HomeKit) and the [Lutron Caséta Smart Bridge](https://www.casetawireless.com/products/expansion-kits-and-smart-bridge). Specifically, this adds support for the [Serena Smart Wood Blinds](https://www.serenashades.com), which is all I care about at the moment. :)
 
 This is specifically _not_ for the Smart Bridge Pro, which uses (can use) an entirely different protocol. This plugin makes use of the [lutron-leap-js](https://github.com/thenewwazoo/lutron-leap-js) library, which implements the Lutron LEAP protocol, used by the Lutron mobile apps.
