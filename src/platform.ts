@@ -20,7 +20,8 @@ import {
 import TypedEmitter from 'typed-emitter';
 
 import { PLUGIN_NAME, PLATFORM_NAME } from './settings';
-import { SerenaTiltOnlyWoodBlinds } from './SerenaTiltOnlyWoodBlinds';
+import { SerenaTiltOnlyWoodBlinds } from './Devices/SerenaTiltOnlyWoodBlinds';
+import { Pico3ButtonRaiseLower } from './Devices/Pico3ButtonRaiseLower';
 import { BridgeManager } from './BridgeManager';
 
 interface PlatformEvents {
@@ -141,6 +142,24 @@ export class LutronCasetaLeap
 
                         // SIDE EFFECT: this constructor mutates the accessory object
                         new SerenaTiltOnlyWoodBlinds(
+                            this,
+                            accessory,
+                            this.bridgeMgr.getBridge(bridge.bridgeID),
+                        );
+
+                        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+                        this.accessories.set(uuid, accessory);
+                        break;
+                    }
+                    case 'Pico3ButtonRaiseLower': {
+                        this.log.info('found a remote:', d.FullyQualifiedName.join(' '));
+
+                        const accessory = new this.api.platformAccessory(d.FullyQualifiedName.join(' '), uuid);
+                        accessory.context.device = d;
+                        accessory.context.bridgeID = bridge.bridgeID;
+
+                        // SIDE EFFECT: this constructor mutates the accessory object
+                        new Pico3ButtonRaiseLower(
                             this,
                             accessory,
                             this.bridgeMgr.getBridge(bridge.bridgeID),

@@ -6,7 +6,7 @@ import {
     CharacteristicGetCallback,
 } from 'homebridge';
 
-import { LutronCasetaLeap } from './platform';
+import { LutronCasetaLeap } from '../platform';
 import { OneZoneStatus, Response, SmartBridge, Device } from 'lutron-leap';
 
 export class SerenaTiltOnlyWoodBlinds {
