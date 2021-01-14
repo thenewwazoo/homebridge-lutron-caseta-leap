@@ -60,7 +60,7 @@ export class LutronCasetaLeap
         this.finder = new BridgeFinder(this.secrets);
         this.finder.on('discovered', this.handleBridgeDiscovery.bind(this));
 
-        log.info('Example platform finished initializing!');
+        log.info('platform finished initializing!');
 
         /*
          * When this event is fired, homebridge restored all cached accessories from disk and did call their respective
@@ -69,7 +69,7 @@ export class LutronCasetaLeap
          * This event can also be used to start discovery of new accessories.
          */
         api.on(APIEvent.DID_FINISH_LAUNCHING, () => {
-            log.info('Got DID_FINISH_LAUNCHING');
+            log.debug('Got DID_FINISH_LAUNCHING');
         });
     }
 
@@ -93,16 +93,30 @@ export class LutronCasetaLeap
         // At this point, we very likely do not have a bridge for the accessory, so we
         // use the bridge manager to pass a promise based on the bridge ID, which do we
         // saved in the accessory context.
-        this.log.info('restoring cached device', accessory.UUID);
+        this.log.info('Restoring cached device', accessory.UUID);
         switch (accessory.context.device.DeviceType) {
             case 'SerenaTiltOnlyWoodBlind': {
                 this.log.info(
-                    'restoring blinds',
+                    'Restoring',
                     accessory.context.device.FullyQualifiedName.join(' '),
                     'on bridge',
                     accessory.context.bridgeID,
                 );
                 new SerenaTiltOnlyWoodBlinds(
+                    this,
+                    accessory,
+                    this.bridgeMgr.getBridge(accessory.context.bridgeID),
+                );
+                break;
+            }
+            case 'Pico3ButtonRaiseLower': {
+                this.log.info(
+                    'Restoring',
+                    accessory.context.device.FullyQualifiedName.join(' '),
+                    'on bridge',
+                    accessory.context.bridgeID,
+                );
+                new Pico3ButtonRaiseLower(
                     this,
                     accessory,
                     this.bridgeMgr.getBridge(accessory.context.bridgeID),
@@ -129,12 +143,12 @@ export class LutronCasetaLeap
             for (const d of devices) {
                 const uuid = this.api.hap.uuid.generate(d.SerialNumber.toString());
                 if (this.accessories.has(uuid)) {
-                    this.log.info('Accessory', uuid, 'already registered. skipping.');
+                    this.log.debug('Accessory', uuid, 'already registered.');
                     continue;
                 }
                 switch (d.DeviceType) {
                     case 'SerenaTiltOnlyWoodBlind': {
-                        this.log.info('found a blind:', d.FullyQualifiedName.join(' '));
+                        this.log.info('found:', d.FullyQualifiedName.join(' '));
 
                         const accessory = new this.api.platformAccessory(d.FullyQualifiedName.join(' '), uuid);
                         accessory.context.device = d;
@@ -152,7 +166,7 @@ export class LutronCasetaLeap
                         break;
                     }
                     case 'Pico3ButtonRaiseLower': {
-                        this.log.info('found a remote:', d.FullyQualifiedName.join(' '));
+                        this.log.info('found:', d.FullyQualifiedName.join(' '));
 
                         const accessory = new this.api.platformAccessory(d.FullyQualifiedName.join(' '), uuid);
                         accessory.context.device = d;
@@ -170,7 +184,7 @@ export class LutronCasetaLeap
                         break;
                     }
                     default:
-                        this.log.info('Got unimplemented device type', d.DeviceType, ', skipping');
+                        this.log.info('Skipping unimplemented device type %s', d.DeviceType);
                 }
             }
         });
