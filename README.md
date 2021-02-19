@@ -2,7 +2,9 @@
 
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
 
-This is a plugin that interfaces between Homebridge (and HomeKit) and the [Lutron Caséta Smart Bridge](https://www.casetawireless.com/products/expansion-kits-and-smart-bridge). Specifically, this adds support for the [Serena Smart Wood Blinds](https://www.serenashades.com), which is all I care about at the moment. :)
+This is a plugin that interfaces between Homebridge (and HomeKit) and the [Lutron Caséta Smart Bridge](https://www.casetawireless.com/products/expansion-kits-and-smart-bridge). Specifically, this adds support for the [Serena Smart Wood Blinds](https://www.serenashades.com). Because HomeKit control for dimmers and switches, etc, are natively supported by the Smart Bridge, this plugin doesn't implement them. If you want to help out and add support, please see the [To-do and contributions](#To_do-and-contributions) section at the bottom of this document.
+
+> **_NOTE_**: Pico remote support [is complicated](https://github.com/thenewwazoo/homebridge-lutron-caseta-leap/issues/3#issuecomment-780747565). I would like to add support, but I do not have the means to do so today.
 
 This is specifically _not_ for the Smart Bridge Pro, which uses (can use) an entirely different protocol. This plugin makes use of the [lutron-leap-js](https://github.com/thenewwazoo/lutron-leap-js) library, which implements the Lutron LEAP protocol, used by the Lutron mobile apps.
 
