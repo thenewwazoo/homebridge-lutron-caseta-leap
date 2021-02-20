@@ -90,7 +90,7 @@ export class SerenaTiltOnlyWoodBlinds {
     }
 
     handleUnsolicited(response: Response): void {
-        if ((response.Body as OneZoneStatus).ZoneStatus.Zone.href === this.device.LocalZones[0].href) {
+        if ((response.Body as OneZoneStatus)?.ZoneStatus?.Zone?.href === this.device.LocalZones[0].href) {
             const adj_val = Math.min(100, (response.Body as OneZoneStatus).ZoneStatus.Tilt * 2);
             this.platform.log.info('accessory', this.accessory.UUID, 'got a response with adjusted value', adj_val);
 
@@ -101,7 +101,6 @@ export class SerenaTiltOnlyWoodBlinds {
             this.accessory.getService(this.platform.api.hap.Service.WindowCovering)!
                 .getCharacteristic(this.platform.api.hap.Characteristic.CurrentPosition)
                 .updateValue(adj_val);
-
         }
     }
 

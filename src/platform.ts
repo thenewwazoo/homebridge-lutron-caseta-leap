@@ -42,7 +42,6 @@ export class LutronCasetaLeap
     private readonly accessories: Map<string, PlatformAccessory> = new Map();
     private finder: BridgeFinder;
     private secrets: Map<string, SecretStorage>;
-    private bridges: Map<string, SmartBridge> = new Map();
     private bridgeMgr = new BridgeManager();
 
     constructor(
@@ -59,8 +58,6 @@ export class LutronCasetaLeap
         this.finder = new BridgeFinder(this.secrets);
         this.finder.on('discovered', this.handleBridgeDiscovery.bind(this));
 
-        log.info('Example platform finished initializing!');
-
         /*
          * When this event is fired, homebridge restored all cached accessories from disk and did call their respective
          * `configureAccessory` method for all of them. Dynamic Platform plugins should only register new accessories
@@ -70,6 +67,8 @@ export class LutronCasetaLeap
         api.on(APIEvent.DID_FINISH_LAUNCHING, () => {
             log.info('Got DID_FINISH_LAUNCHING');
         });
+
+        log.info('LutronCasetaLeap plugin finished early initialization');
     }
 
     secretsFromConfig(config: PlatformConfig): Map<string, SecretStorage> {
@@ -118,7 +117,7 @@ export class LutronCasetaLeap
     // ----- CUSTOM METHODS
 
     private handleBridgeDiscovery(bridge: SmartBridge) {
-        if (this.bridges.has(bridge.bridgeID)) {
+        if (this.bridgeMgr.hasBridge(bridge.bridgeID)) {
             // we've already discovered this bridge, move along
             return;
         }

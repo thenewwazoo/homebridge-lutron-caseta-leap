@@ -54,4 +54,8 @@ export class BridgeManager {
         }
         this.pendingBridges.delete(bridge.bridgeID);
     }
+
+    public hasBridge(bridgeID: string) {
+        return this.bridges.has(bridgeID);
+    }
 }
