@@ -119,7 +119,7 @@ export class LutronCasetaLeap
     private handleBridgeDiscovery(bridge: SmartBridge) {
         if (this.bridgeMgr.hasBridge(bridge.bridgeID)) {
             // we've already discovered this bridge, move along
-            this.log.info("Bridge", bridge.bridgeID, "already known, closing.");
+            this.log.info('Bridge', bridge.bridgeID, 'already known, closing.');
             bridge.close();
             return;
         }
