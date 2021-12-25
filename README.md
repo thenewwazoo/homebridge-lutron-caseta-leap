@@ -81,6 +81,10 @@ The shape of the configuration is:
 
 The authn strings are newline-escaped versions of the files you generated.
 
+## Enabling debugging
+
+In order to enable debugging, set the DEBUG environment variable in the Homebridge UI to `leap:*`. This will make this plugin, and its main library `lutron-leap-js` noisier.
+
 ## To-do and contributions
 
 I welcome contributions! I wrote this to scratch an itch (no Serena wood blind support), but would be fine with additional devices. To add a device:
