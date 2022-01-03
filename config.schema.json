@@ -5,6 +5,12 @@
   "schema": {
     "type": "object",
     "properties": {
+      "name": {
+        "type": "string",
+        "title": "Name",
+        "default": "Lutron",
+        "required": true
+      },
         "secrets": {
             "type": "array",
             "items": {
