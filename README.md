@@ -2,11 +2,14 @@
 
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
 
-This is a plugin that interfaces between Homebridge (and HomeKit) and the [Lutron Caséta Smart Bridge](https://www.casetawireless.com/products/expansion-kits-and-smart-bridge). Specifically, this adds support for the [Serena Smart Wood Blinds](https://www.serenashades.com). Because HomeKit control for dimmers and switches, etc, are natively supported by the Smart Bridge, this plugin doesn't implement them. If you want to help out and add support, please see the [To-do and contributions](#to-do-and-contributions) section at the bottom of this document.
+This is a plugin that interfaces between Homebridge (and HomeKit) and the [Lutron Caséta Smart Bridge](https://www.casetawireless.com/products/expansion-kits-and-smart-bridge). Specifically, this adds support for:
 
-> **_NOTE_**: Pico remote support [is complicated](https://github.com/thenewwazoo/homebridge-lutron-caseta-leap/issues/3#issuecomment-780747565). I would like to add support, but I do not have the means to do so today.
+* the [Serena Smart Wood Blinds](https://www.serenashades.com),
+* some [Pico Remotes](https://www.lutron.com/en-US/Products/Pages/Components/PicoWirelessController/Models.aspx); more can be added, I just don't own them.
 
-This is specifically _not_ for the Smart Bridge Pro, which uses (can use) an entirely different protocol. This plugin makes use of the [lutron-leap-js](https://github.com/thenewwazoo/lutron-leap-js) library, which implements the Lutron LEAP protocol, used by the Lutron mobile apps.
+Because HomeKit control for dimmers and switches, etc, are natively supported by the Smart Bridge, this plugin doesn't implement them. If you want to help out and add support, please see the [To-do and contributions](#to-do-and-contributions) section at the bottom of this document.
+
+This is specifically _not_ for the Smart Bridge Pro, which uses (can use) an entirely different protocol. This plugin makes use of the [lutron-leap-js](https://github.com/thenewwazoo/lutron-leap-js) library, which implements the Lutron LEAP protocol, used by the Lutron mobile apps. If it works with the Pro, that's basically just a happy accident. :D
 
 ## Preparation
 
@@ -92,3 +95,15 @@ I welcome contributions! I wrote this to scratch an itch (no Serena wood blind s
 * Add a class for your device. The constructor should wire up event handlers and manage services and characteristics.
 * Add relevant methods to the [`SmartBridge`](https://github.com/thenewwazoo/lutron-leap-js/blob/main/src/SmartBridge.ts) class in the `lutron-leap-js` project to control the device. These methods should construct command requests.
 * Add an "unsolicited events" handler in your new device class to update itself when new information arrives from the bridge, and to update characteristic values.
+
+## Development setup
+
+(rough notes)
+
+* Check this out
+* Check out the lutron-leap-js repo
+* Make changes there and `npm run build` it
+* `npm install ../lutron-leap-js`
+* Make changes here
+* `rm ~/.homebridge/accessories/cachedAccessories; DEBUG='leap:*,HAP-NodeJS:Accessory' npm run watch`
+* `npm run lint`
