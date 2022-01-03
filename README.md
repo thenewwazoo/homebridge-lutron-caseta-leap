@@ -44,6 +44,8 @@ The bridge ID is the serial number, and is printed on the underside of the bridg
 
 The easiest way is to use the [`get_lutron_cert.py`](https://github.com/gurumitts/pylutron-caseta/blob/dev/get_lutron_cert.py) script that comes with the [`pylutron-caseta`](https://github.com/gurumitts/pylutron-caseta) project, without which this would not have been possible.
 
+*NOTE*: these instructions may be out of date! If this doesn't work, please read the script itself.
+
 To use the script, you'll want to check out the repo:
 ```
 git clone https://github.com/gurumitts/pylutron-caseta.git
@@ -53,6 +55,7 @@ Then, create a venv and install the depedencies:
 ```
 python3 -m venv env
 . env/bin/activate
+pip install pyOpenSSL==19.1.0
 pip install .
 ```
 
