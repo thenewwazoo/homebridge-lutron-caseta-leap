@@ -23,7 +23,7 @@ export class SerenaTiltOnlyWoodBlinds {
         this.accessory.getService(this.platform.api.hap.Service.AccessoryInformation)!
             .setCharacteristic(this.platform.api.hap.Characteristic.Manufacturer, 'Lutron Electronics Co., Inc')
             .setCharacteristic(this.platform.api.hap.Characteristic.Model, this.device.ModelNumber)
-            .setCharacteristic(this.platform.api.hap.Characteristic.SerialNumber, this.device.SerialNumber);
+            .setCharacteristic(this.platform.api.hap.Characteristic.SerialNumber, this.device.SerialNumber.toString());
 
         this.service =
             this.accessory.getService(this.platform.api.hap.Service.WindowCovering) ||
@@ -90,17 +90,19 @@ export class SerenaTiltOnlyWoodBlinds {
     }
 
     handleUnsolicited(response: Response): void {
-        if ((response.Body as OneZoneStatus)?.ZoneStatus?.Zone?.href === this.device.LocalZones[0].href) {
-            const adj_val = Math.min(100, (response.Body as OneZoneStatus).ZoneStatus.Tilt * 2);
-            this.platform.log.info('accessory', this.accessory.UUID, 'got a response with adjusted value', adj_val);
+        if (response.Header.MessageBodyType === 'OneZoneStatus') {
+            if ((response.Body as OneZoneStatus)?.ZoneStatus?.Zone?.href === this.device.LocalZones[0].href) {
+                const adj_val = Math.min(100, (response.Body as OneZoneStatus).ZoneStatus.Tilt * 2);
+                this.platform.log.info('accessory', this.accessory.UUID, 'got a response with adjusted value', adj_val);
 
-            this.accessory.getService(this.platform.api.hap.Service.WindowCovering)!
-                .getCharacteristic(this.platform.api.hap.Characteristic.TargetPosition)
-                .updateValue(adj_val);
+                this.accessory.getService(this.platform.api.hap.Service.WindowCovering)!
+                    .getCharacteristic(this.platform.api.hap.Characteristic.TargetPosition)
+                    .updateValue(adj_val);
 
-            this.accessory.getService(this.platform.api.hap.Service.WindowCovering)!
-                .getCharacteristic(this.platform.api.hap.Characteristic.CurrentPosition)
-                .updateValue(adj_val);
+                this.accessory.getService(this.platform.api.hap.Service.WindowCovering)!
+                    .getCharacteristic(this.platform.api.hap.Characteristic.CurrentPosition)
+                    .updateValue(adj_val);
+            }
         }
     }
 
