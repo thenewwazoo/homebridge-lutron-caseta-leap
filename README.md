@@ -11,6 +11,27 @@ Because HomeKit control for dimmers and switches, etc, are natively supported by
 
 This is specifically _not_ for the Smart Bridge Pro, which uses (can use) an entirely different protocol. This plugin makes use of the [lutron-leap-js](https://github.com/thenewwazoo/lutron-leap-js) library, which implements the Lutron LEAP protocol, used by the Lutron mobile apps. If it works with the Pro, that's basically just a happy accident. :D
 
+### Pico Remote Button Mapping
+
+Pico buttons are mapped according to the following diagram:
+
+![iOS Home App and Eve app screenshots showing arrows pointing from the button entries in the apps to the physical buttons on a picture of a pico remote](assets/buttons_map.png)
+
+The iOS Home app doesn't actually show button names (e.g. "On"), but only shows "Button 1". Other, better, iOS Homekit apps do, though. In any case, buttons are mapped from top-to-bottom. The top-most physical button is button 1, and is shown at the top of the list in the app.
+
+I only actually own the "3-button with raise/lower" remotes in my house, so I've had to make guesses about the other supported remotes, and defer implementing some others. Currently supported are:
+
+* [2 Button](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-2B&Section=Documents)
+* [2-Button with raise/lower](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-2BRL&Section=Documents)
+* [3-Button](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-3B&Section=Documents)
+* [3-Button with raise/lower](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-3BRL&Section=Documents)
+
+I can expand support myself if you can provide me with a remote, and encourage PRs if you have the hardware yourself.
+
+### Homekit and Lutron App collision
+
+Right now, all known Pico remotes are shown in the Home app. This means their functionality is duplicated, in a sense. Configuration in Homekit has no effect on operation with paired accessories, or anything else in the Lutron app. Let me know if you'd like to hide remotes that are paired, as it's possible but not currently enabled.
+
 ## Preparation
 
 ### Get your bridge ID
