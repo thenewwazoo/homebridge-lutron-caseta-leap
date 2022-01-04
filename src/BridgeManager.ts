@@ -28,7 +28,7 @@ export class BridgeManager {
 
             const pendingTimeout = setTimeout(() => {
                 rejectPending(new Error('Timed out waiting for bridge to appear'));
-            }, 3000);
+            }, 5000);
 
             const bridgePromise: Promise<SmartBridge> = new Promise((resolve: (bridge: SmartBridge) => void, reject) => {
                 resolvePending = resolve;
