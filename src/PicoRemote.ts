@@ -3,6 +3,8 @@ import { Service, PlatformAccessory } from 'homebridge';
 import { LutronCasetaLeap } from './platform';
 import { OneButtonStatusEvent, Response, SmartBridge } from 'lutron-leap';
 
+import { inspect } from 'util';
+
 // This maps device types and button numbers to human-readable labels and
 // ServiceLabelIndex values. n.b. the labels are not shown in Apple's Home app,
 // but are shown in other apps. The index value determines the order that
@@ -83,9 +85,20 @@ export class PicoRemote {
         );
 
         for (const button of accessory.context.buttons) {
-            const alias = BUTTON_MAP.get(this.accessory.context.device.DeviceType)!.get(button.ButtonNumber)!;
+
+            const dentry = BUTTON_MAP.get(this.accessory.context.device.DeviceType);
+            if (dentry === undefined) {
+                throw new Error(`Could not find ${this.accessory.context.device.DeviceType} in button map`);
+            }
+            const alias = dentry.get(button.ButtonNumber);
+            if (alias === undefined) {
+                throw new Error(
+                    `Could not find button ${button.ButtonNumber} in ${this.accessory.context.device.DeviceType} map entry`
+                );
+            }
+
             this.platform.log.debug(
-                `setting up ${button.href} named ${button.Name} numbered ${button.ButtonNumber} as ${alias}`,
+                `setting up ${button.href} named ${button.Name} numbered ${button.ButtonNumber} as ${inspect(alias, true, null)}`,
             );
 
             const service =
