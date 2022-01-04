@@ -134,7 +134,7 @@ export class LutronCasetaLeap
             for (const d of devices) {
                 const uuid = this.api.hap.uuid.generate(d.SerialNumber.toString());
                 if (this.accessories.has(uuid)) {
-                    this.log.info('Accessory', uuid, 'already registered. skipping.');
+                    this.log.info(`Accessory ${d.DeviceType} ${uuid} already registered. Skipping setup.`);
                     continue;
                 }
 
