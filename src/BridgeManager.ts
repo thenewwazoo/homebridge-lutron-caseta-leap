@@ -2,19 +2,12 @@ import { SmartBridge } from 'lutron-leap';
 
 export class BridgeManager {
     private bridges: Map<string, SmartBridge> = new Map();
-    private pendingBridges: Map<string,
-                                Array<
-                                    [
-                                        (bridge: SmartBridge) => void,
-                                        ReturnType<typeof setTimeout>
-                                    ]
-                                >
-                            > = new Map(); // whew, that's a gnarly spec.
+    private pendingBridges: Map<string, Array<[(bridge: SmartBridge) => void, ReturnType<typeof setTimeout>]>> =
+        new Map(); // whew, that's a gnarly spec.
 
     public getBridge(bridgeID: string): Promise<SmartBridge> {
         if (this.bridges.has(bridgeID)) {
             return Promise.resolve(this.bridges.get(bridgeID)!);
-
         } else {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             let resolvePending = function (_bridge: SmartBridge): void {
@@ -30,10 +23,12 @@ export class BridgeManager {
                 rejectPending(new Error('Timed out waiting for bridge to appear'));
             }, 5000);
 
-            const bridgePromise: Promise<SmartBridge> = new Promise((resolve: (bridge: SmartBridge) => void, reject) => {
-                resolvePending = resolve;
-                rejectPending = reject;
-            });
+            const bridgePromise: Promise<SmartBridge> = new Promise(
+                (resolve: (bridge: SmartBridge) => void, reject) => {
+                    resolvePending = resolve;
+                    rejectPending = reject;
+                },
+            );
 
             if (!this.pendingBridges.has(bridgeID)) {
                 this.pendingBridges.set(bridgeID, []);
