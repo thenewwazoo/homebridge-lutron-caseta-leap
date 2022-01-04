@@ -81,7 +81,7 @@ export class SerenaTiltOnlyWoodBlinds {
     // tilt angle to [-90,0] degrees by scaling `value` after the fact.
 
     async handleCurrentPositionGet(): Promise<number> {
-        this.platform.log.info(
+        this.platform.log.debug(
             'blinds',
             this.device.FullyQualifiedName.join(' '),
             'were asked for current or target position',
@@ -89,16 +89,21 @@ export class SerenaTiltOnlyWoodBlinds {
         const bridge = await this.bridge;
         const tilt = await bridge.readBlindsTilt(this.device);
         const adj_val = Math.min(100, tilt * 2);
-        this.platform.log.info('got adjusted position', adj_val);
+        this.platform.log.info(
+            'Told Homekit that blinds',
+            this.device.FullyQualifiedName.join(' '),
+            'are at position',
+            adj_val,
+        );
         return adj_val;
     }
 
     async handleTargetPositionSet(value: CharacteristicValue): Promise<void> {
         const adj_val = Number(value) / 2;
         this.platform.log.info(
-            'blinds',
+            'Commanded',
             this.device.FullyQualifiedName.join(' '),
-            'were set to adjusted value',
+            'blinds to (adjusted) value',
             adj_val,
         );
         const bridge = await this.bridge;
@@ -113,7 +118,12 @@ export class SerenaTiltOnlyWoodBlinds {
         if (response.Header.MessageBodyType === 'OneZoneStatus') {
             if ((response.Body as OneZoneStatus)?.ZoneStatus?.Zone?.href === this.device.LocalZones[0].href) {
                 const adj_val = Math.min(100, (response.Body as OneZoneStatus).ZoneStatus.Tilt * 2);
-                this.platform.log.info('accessory', this.accessory.UUID, 'got a response with adjusted value', adj_val);
+                this.platform.log.info(
+                    'Blinds',
+                    this.device.FullyQualifiedName.join(' '),
+                    'reported a new position of',
+                    adj_val,
+                );
 
                 this.accessory
                     .getService(this.platform.api.hap.Service.WindowCovering)!

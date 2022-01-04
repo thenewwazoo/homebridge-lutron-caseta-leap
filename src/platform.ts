@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { BridgeFinder, ButtonGroup, Device, Response, SmartBridge, SecretStorage } from 'lutron-leap';
+import { BridgeFinder, Device, Response, SmartBridge, SecretStorage } from 'lutron-leap';
 
 import { API, APIEvent, DynamicPlatformPlugin, Logging, PlatformAccessory, PlatformConfig } from 'homebridge';
 
@@ -42,12 +42,6 @@ export class LutronCasetaLeap
             return;
         }
 
-        this.finder = new BridgeFinder(this.secrets);
-        this.finder.on('discovered', this.handleBridgeDiscovery.bind(this));
-        this.finder.on('failed', (error) => {
-            log.error('Could not connect to discovered hub: ' + error);
-        });
-
         /*
          * When this event is fired, homebridge restored all cached accessories from disk and did call their respective
          * `configureAccessory` method for all of them. Dynamic Platform plugins should only register new accessories
@@ -55,7 +49,13 @@ export class LutronCasetaLeap
          * This event can also be used to start discovery of new accessories.
          */
         api.on(APIEvent.DID_FINISH_LAUNCHING, () => {
-            log.info('Got DID_FINISH_LAUNCHING');
+            log.info('Finished launching; starting up automatic discovery');
+
+            this.finder = new BridgeFinder(this.secrets);
+            this.finder.on('discovered', this.handleBridgeDiscovery.bind(this));
+            this.finder.on('failed', (error) => {
+                log.error('Could not connect to discovered hub:', error);
+            });
         });
 
         log.info('LutronCasetaLeap plugin finished early initialization');
@@ -83,16 +83,13 @@ export class LutronCasetaLeap
         // the bridge ID, which we previously saved in the accessory context.
         const bridge = this.bridgeMgr.getBridge(accessory.context.bridgeID);
 
-        this.log.info(`restoring cached ${accessory.context.device.DeviceType} ${accessory.UUID}`);
+        this.log.info(
+            `Restoring cached ${accessory.context.device.DeviceType} ${accessory.UUID} on bridge ${accessory.context.bridgeID}`,
+        );
 
         switch (accessory.context.device.DeviceType) {
             case 'SerenaTiltOnlyWoodBlind': {
-                this.log.info(
-                    'restoring blinds',
-                    accessory.context.device.FullyQualifiedName.join(' '),
-                    'on bridge',
-                    accessory.context.bridgeID,
-                );
+                this.log.info('Restoring blinds', accessory.context.device.FullyQualifiedName.join(' '));
                 new SerenaTiltOnlyWoodBlinds(this, accessory, bridge);
                 break;
             }
@@ -102,14 +99,15 @@ export class LutronCasetaLeap
             case 'Pico3Button':
             case 'Pico3ButtonRaiseLower': {
                 this.log.info(
-                    `restoring remote ${accessory.context.device.FullyQualifiedName.join(' ')} on bridge ${
-                        accessory.context.bridgeID
-                    }`,
+                    'Restoring Pico remote',
+                    accessory.context.device.FullyQualifiedName.join(' '),
+                    'on bridge',
+                    accessory.context.bridgeID,
                 );
                 try {
                     new PicoRemote(this, accessory, bridge);
                 } catch (e) {
-                    this.log.error(`Failed to set up pico remote: ${e}`);
+                    this.log.error('Failed to set up cached Pico remote as expected:', e);
                 }
                 break;
             }
@@ -131,31 +129,33 @@ export class LutronCasetaLeap
         }
         this.bridgeMgr.addBridge(bridge);
 
-        bridge.getDeviceInfo().then((devices: Device[]) => {
+        bridge.getDeviceInfo().then(async (devices: Device[]) => {
             for (const d of devices) {
                 const uuid = this.api.hap.uuid.generate(d.SerialNumber.toString());
                 if (this.accessories.has(uuid)) {
                     this.log.info(
-                        `Accessory ${d.DeviceType} ${uuid} ${d.FullyQualifiedName.join(
-                            ' ',
-                        )} already registered. Skipping setup.`,
+                        'Accessory',
+                        d.DeviceType,
+                        uuid,
+                        d.FullyQualifiedName.join(' '),
+                        'already set up. Skipping.',
                     );
                     continue;
                 }
 
+                const fullName = d.FullyQualifiedName.join(' ');
+
+                const accessory = new this.api.platformAccessory(fullName, uuid);
+                accessory.context.device = d;
+                accessory.context.bridgeID = bridge.bridgeID;
+
                 switch (d.DeviceType) {
                     case 'SerenaTiltOnlyWoodBlind': {
-                        this.log.info('found a blind:', d.FullyQualifiedName.join(' '));
-
-                        const accessory = new this.api.platformAccessory(d.FullyQualifiedName.join(' '), uuid);
-                        accessory.context.device = d;
-                        accessory.context.bridgeID = bridge.bridgeID;
+                        this.log.info('Found a new Serena blind:', fullName);
 
                         // SIDE EFFECT: this constructor mutates the accessory object
                         new SerenaTiltOnlyWoodBlinds(this, accessory, this.bridgeMgr.getBridge(bridge.bridgeID));
 
-                        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-                        this.accessories.set(uuid, accessory);
                         break;
                     }
 
@@ -163,36 +163,16 @@ export class LutronCasetaLeap
                     case 'Pico2ButtonRaiseLower':
                     case 'Pico3Button':
                     case 'Pico3ButtonRaiseLower': {
-                        this.log.info('found a pico remote', d.FullyQualifiedName.join(' '));
+                        this.log.info('Found a new', d.DeviceType, 'remote', fullName);
 
+                        // SIDE EFFECT: this constructor mutates the accessory object
                         try {
-                            bridge.getButtonGroupFromDevice(d).then(async (bg: ButtonGroup) => {
-                                // TODO make this behavior optional. a user may
-                                // want to hide remotes that are already associated
-                                // with devices
-                                /*
-                            if (bg.AffectedZones !== undefined) {
-                                return;
-                            }
-                            */
-
-                                const buttons = await bridge.getButtonsFromGroup(bg);
-                                this.log.debug('group ', bg.href, ' has ', buttons.length, ' buttons');
-
-                                const accessory = new this.api.platformAccessory(d.FullyQualifiedName.join(' '), uuid);
-                                accessory.context.device = d;
-                                accessory.context.bridgeID = bridge.bridgeID;
-                                accessory.context.buttons = buttons;
-
-                                // SIDE EFFECT: this constructor mutates the accessory object
-                                new PicoRemote(this, accessory, this.bridgeMgr.getBridge(bridge.bridgeID));
-
-                                this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-                                this.accessories.set(uuid, accessory);
-                            });
+                            new PicoRemote(this, accessory, this.bridgeMgr.getBridge(bridge.bridgeID));
                         } catch (e) {
-                            this.log.error(`Failed to set up pico: ${e}`);
+                            this.log.error('Failed to set up Pico', fullName, e);
+                            continue;
                         }
+
                         break;
                     }
 
@@ -203,8 +183,16 @@ export class LutronCasetaLeap
                     case 'Pico4Button2Group':
                     case 'FourGroupRemote':
                     default:
-                        this.log.info('Got unimplemented device type', d.DeviceType, ', skipping');
+                        this.log.info('Device type', d.DeviceType, 'not yet supported, skipping setup');
+                        continue;
                 }
+                try {
+                    this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+                } catch (e) {
+                    this.log.error(`Could not register ${d.DeviceType} named ${fullName} with uuid ${uuid}: ${e}`);
+                    continue;
+                }
+                this.accessories.set(uuid, accessory);
             }
         });
 
