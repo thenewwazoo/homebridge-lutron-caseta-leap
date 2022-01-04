@@ -58,13 +58,15 @@ const BUTTON_MAP = new Map<string, Map<number, { label: string; index: number }>
 ]);
 
 export class PicoRemote {
-    private services: Map<string, Service>;
+    private services: Map<string, Service> = new Map();
 
     constructor(
         private readonly platform: LutronCasetaLeap,
         private readonly accessory: PlatformAccessory,
         private readonly bridge: Promise<SmartBridge>,
     ) {
+        const fullName = accessory.context.device.FullyQualifiedName.join(' ');
+
         this.accessory
             .getService(this.platform.api.hap.Service.AccessoryInformation)!
             .setCharacteristic(this.platform.api.hap.Characteristic.Manufacturer, 'Lutron Electronics Co., Inc')
@@ -74,8 +76,6 @@ export class PicoRemote {
                 this.accessory.context.device.SerialNumber.toString(),
             );
 
-        this.services = new Map();
-
         const label_svc =
             this.accessory.getService(this.platform.api.hap.Service.ServiceLabel) ||
             this.accessory.addService(this.platform.api.hap.Service.ServiceLabel);
@@ -84,50 +84,82 @@ export class PicoRemote {
             this.platform.api.hap.Characteristic.ServiceLabelNamespace.ARABIC_NUMERALS, // ha ha
         );
 
-        for (const button of accessory.context.buttons) {
-            const dentry = BUTTON_MAP.get(this.accessory.context.device.DeviceType);
-            if (dentry === undefined) {
-                throw new Error(`Could not find ${this.accessory.context.device.DeviceType} in button map`);
+        (async () => {
+            const bridge = await this.bridge;
+
+            let bg;
+            try {
+                // TODO some remotes return multiple button groups. make this support them.
+                // see https://github.com/gurumitts/pylutron-caseta/pull/84
+                bg = await bridge.getButtonGroupFromDevice(this.accessory.context.device);
+            } catch (e) {
+                this.platform.log.error('Failed to get button group(s) belonging to', fullName, e);
+                throw e;
             }
-            const alias = dentry.get(button.ButtonNumber);
-            if (alias === undefined) {
-                throw new Error(
-                    `Could not find button ${button.ButtonNumber} in ${this.accessory.context.device.DeviceType} map entry`,
-                );
+
+            // TODO make this behavior optional. a user may want to
+            // hide remotes that are already associated with
+            // devices
+            /*
+               if (bg.AffectedZones !== undefined) {
+               return;
+               }
+               */
+
+            let buttons;
+            try {
+                buttons = await bridge.getButtonsFromGroup(bg);
+            } catch (e) {
+                this.platform.log.error('Failed to get buttons from button group', bg.href);
+                throw e;
             }
 
-            this.platform.log.debug(
-                `setting up ${button.href} named ${button.Name} numbered ${button.ButtonNumber} as ${inspect(
-                    alias,
-                    true,
-                    null,
-                )}`,
-            );
+            for (const button of buttons) {
+                const dentry = BUTTON_MAP.get(this.accessory.context.device.DeviceType);
+                if (dentry === undefined) {
+                    throw new Error(`Could not find ${this.accessory.context.device.DeviceType} in button map`);
+                }
+                const alias = dentry.get(button.ButtonNumber);
+                if (alias === undefined) {
+                    throw new Error(
+                        `Could not find button ${button.ButtonNumber} in ${this.accessory.context.device.DeviceType} map entry`,
+                    );
+                }
 
-            const service =
-                this.accessory.getServiceById(this.platform.api.hap.Service.StatelessProgrammableSwitch, alias.label) ||
-                this.accessory.addService(
-                    this.platform.api.hap.Service.StatelessProgrammableSwitch,
-                    button.Name,
-                    alias.label,
+                this.platform.log.debug(
+                    `setting up ${button.href} named ${button.Name} numbered ${button.ButtonNumber} as ${inspect(
+                        alias,
+                        true,
+                        null,
+                    )}`,
                 );
-            service.addLinkedService(label_svc);
 
-            service.setCharacteristic(this.platform.api.hap.Characteristic.Name, alias.label);
-            service.setCharacteristic(this.platform.api.hap.Characteristic.ServiceLabelIndex, alias.index);
+                const service =
+                    this.accessory.getServiceById(
+                        this.platform.api.hap.Service.StatelessProgrammableSwitch,
+                        alias.label,
+                    ) ||
+                    this.accessory.addService(
+                        this.platform.api.hap.Service.StatelessProgrammableSwitch,
+                        button.Name,
+                        alias.label,
+                    );
+                service.addLinkedService(label_svc);
 
-            // TODO add timers to track double- and long-presses, remove this line
-            service
-                .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
-                .setProps({ maxValue: 0 });
+                service.setCharacteristic(this.platform.api.hap.Characteristic.Name, alias.label);
+                service.setCharacteristic(this.platform.api.hap.Characteristic.ServiceLabelIndex, alias.index);
 
-            this.services.set(button.href, service);
+                // TODO add timers to track double- and long-presses, remove this line
+                service
+                    .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
+                    .setProps({ maxValue: 0 });
 
-            bridge.then((bridge: SmartBridge) => {
-                this.platform.log.debug(`have bridge ${bridge.bridgeID}, subscribing`);
+                this.services.set(button.href, service);
+
+                this.platform.log.debug(`subscribing to ${button.href} events`);
                 bridge.client.subscribe(button.href + '/status/event', this.handleEvent.bind(this), 'SubscribeRequest');
-            });
-        }
+            }
+        })().then(() => this.platform.log.info('Finished setting up Pico remote', fullName));
 
         this.platform.on('unsolicited', this.handleUnsolicited.bind(this));
     }
@@ -146,7 +178,12 @@ export class PicoRemote {
                 this.platform.log.debug('button ', evt.Button.href, ' was ', evt.ButtonEvent.EventType);
             }
         } else {
-            this.platform.log.warn('unsolicited button event from ', evt.Button.href);
+            this.platform.log.warn(
+                'Pico remote',
+                this.accessory.context.device.FullyQualifiedName.join(' '),
+                'got an event from unknown button',
+                evt.Button.href,
+            );
         }
     }
 
