@@ -14,16 +14,16 @@ const BUTTON_MAP = new Map<string, Map<number, { label: string; index: number }>
         'Pico2Button',
         new Map([
             [0, { label: 'On', index: 1 }],
-            [1, { label: 'Off', index: 2 }],
+            [2, { label: 'Off', index: 2 }],
         ]),
     ],
     [
         'Pico2ButtonRaiseLower',
         new Map([
             [0, { label: 'On', index: 1 }],
-            [1, { label: 'Off', index: 4 }],
-            [2, { label: 'Raise', index: 2 }],
-            [3, { label: 'Lower', index: 3 }],
+            [2, { label: 'Off', index: 4 }],
+            [3, { label: 'Raise', index: 2 }],
+            [4, { label: 'Lower', index: 3 }],
         ]),
     ],
     [
@@ -85,7 +85,6 @@ export class PicoRemote {
         );
 
         for (const button of accessory.context.buttons) {
-
             const dentry = BUTTON_MAP.get(this.accessory.context.device.DeviceType);
             if (dentry === undefined) {
                 throw new Error(`Could not find ${this.accessory.context.device.DeviceType} in button map`);
@@ -93,12 +92,16 @@ export class PicoRemote {
             const alias = dentry.get(button.ButtonNumber);
             if (alias === undefined) {
                 throw new Error(
-                    `Could not find button ${button.ButtonNumber} in ${this.accessory.context.device.DeviceType} map entry`
+                    `Could not find button ${button.ButtonNumber} in ${this.accessory.context.device.DeviceType} map entry`,
                 );
             }
 
             this.platform.log.debug(
-                `setting up ${button.href} named ${button.Name} numbered ${button.ButtonNumber} as ${inspect(alias, true, null)}`,
+                `setting up ${button.href} named ${button.Name} numbered ${button.ButtonNumber} as ${inspect(
+                    alias,
+                    true,
+                    null,
+                )}`,
             );
 
             const service =

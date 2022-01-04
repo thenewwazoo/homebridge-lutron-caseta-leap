@@ -24,7 +24,8 @@ interface BridgeAuthEntry {
 
 export class LutronCasetaLeap
     extends (EventEmitter as new () => TypedEmitter<PlatformEvents>)
-    implements DynamicPlatformPlugin {
+    implements DynamicPlatformPlugin
+{
     private readonly accessories: Map<string, PlatformAccessory> = new Map();
     private finder: BridgeFinder | null = null;
     private secrets: Map<string, SecretStorage>;
@@ -134,7 +135,11 @@ export class LutronCasetaLeap
             for (const d of devices) {
                 const uuid = this.api.hap.uuid.generate(d.SerialNumber.toString());
                 if (this.accessories.has(uuid)) {
-                    this.log.info(`Accessory ${d.DeviceType} ${uuid} already registered. Skipping setup.`);
+                    this.log.info(
+                        `Accessory ${d.DeviceType} ${uuid} ${d.FullyQualifiedName.join(
+                            ' ',
+                        )} already registered. Skipping setup.`,
+                    );
                     continue;
                 }
 
