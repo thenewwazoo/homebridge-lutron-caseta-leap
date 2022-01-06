@@ -4,12 +4,20 @@
 
 This is a plugin that interfaces between Homebridge (and HomeKit) and the [Lutron Caséta Smart Bridge](https://www.casetawireless.com/products/expansion-kits-and-smart-bridge). Specifically, this adds support for:
 
-* the [Serena Smart Wood Blinds](https://www.serenashades.com),
-* some [Pico Remotes](https://www.lutron.com/en-US/Products/Pages/Components/PicoWirelessController/Models.aspx); more can be added, I just don't own them.
+* [Serena Smart Wood Blinds](https://www.serenashades.com),
+* [Pico Remotes](https://www.lutron.com/en-US/Products/Pages/Components/PicoWirelessController/Models.aspx)
 
 Because HomeKit control for dimmers and switches, etc, are natively supported by the Smart Bridge, this plugin doesn't implement them. If you want to help out and add support, please see the [To-do and contributions](#to-do-and-contributions) section at the bottom of this document.
 
-This is specifically _not_ for the Smart Bridge Pro, which uses (can use) an entirely different protocol. This plugin makes use of the [lutron-leap-js](https://github.com/thenewwazoo/lutron-leap-js) library, which implements the Lutron LEAP protocol, used by the Lutron mobile apps. If it works with the Pro, that's basically just a happy accident. :D
+This is specifically _not_ guaranteed to work with the Smart Bridge Pro, which also supports an entirely different protocol (Lutron Integration Protocol, or "LIP"). This plugin makes use of the [lutron-leap-js](https://github.com/thenewwazoo/lutron-leap-js) library, which implements the Lutron LEAP protocol, used by the Lutron mobile apps. Please let me know if it works for you (or you'd like to provide a Pro bridge I can use for testing).
+
+## Support
+
+If you need find a bug, need help with this plugin, or have questions, the best way to reach me is via a Github Issue. Please don't be shy about opening one. You can also reach me via the email address in my Github profile.
+
+This plugin doesn't often change, but when I add big features or make big changes, I will occasionally join the `#lutron-caseta-leap` channel on the [Homebridge Discord server](https://discord.gg/RcV7fa8).
+
+## User Information
 
 ### Pico Remote Button Mapping
 
@@ -22,11 +30,11 @@ The iOS Home app doesn't actually show button names (e.g. "On"), but only shows 
 I only actually own the "3-button with raise/lower" remotes in my house, so I've had to make guesses about the other supported remotes, and defer implementing some others. Currently supported are:
 
 * [2 Button](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-2B&Section=Documents)
-* [2-Button with raise/lower](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-2BRL&Section=Documents)
-* [3-Button](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-3B&Section=Documents)
+* [2-Button with raise/lower](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-2BRL&Section=Documents) (*untested*)
+* [3-Button](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-3B&Section=Documents) (*untested*)
 * [3-Button with raise/lower](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-3BRL&Section=Documents)
 
-I can expand support myself if you can provide me with a remote, and encourage PRs if you have the hardware yourself.
+I'd love to have complete, tested support of all remote types. If you have hardware that is partially- or un-supported and, adding support is fast and easy. I would also be happy to add support for hardware that is provided to me.
 
 ### Homekit and Lutron App collision
 
@@ -110,7 +118,7 @@ The authn strings are newline-escaped versions of the files you generated.
 
 ## Enabling debugging
 
-In order to enable debugging, set the DEBUG environment variable in the Homebridge UI to `leap:*`. This will make this plugin, and its main library `lutron-leap-js` noisier.
+In order to enable debugging, set the DEBUG environment variable in the Homebridge UI to `leap:*`. This will make this plugin, and its main library `lutron-leap-js`, noisier. Logging at this level is required for diagnosis and new hardware support.
 
 ## To-do and contributions
 
