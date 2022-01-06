@@ -170,7 +170,13 @@ export class PicoRemote {
         this.platform.log.debug('handling event from button ', evt.Button.href);
         if (svc !== undefined) {
             if (evt.ButtonEvent.EventType === 'Release') {
-                this.platform.log.debug('button ', evt.Button.href, ' was released');
+                this.platform.log.info(
+                    'Button ',
+                    evt.Button.href,
+                    'on Pico remote',
+                    this.accessory.context.device.FullyQualifiedName.join(' '),
+                    'was released; notifying Homekit',
+                );
                 svc.getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent).updateValue(
                     this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS,
                 );
