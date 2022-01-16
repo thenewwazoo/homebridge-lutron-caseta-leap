@@ -15,7 +15,7 @@ This is specifically _not_ guaranteed to work with the Smart Bridge Pro, which a
 
 If you need find a bug, need help with this plugin, or have questions, the best way to reach me is via a Github Issue. Please don't be shy about opening one. You can also reach me via the email address in my Github profile.
 
-This plugin doesn't often change, but when I add big features or make big changes, I will occasionally join the `#lutron-caseta-leap` channel on the [Homebridge Discord server](https://discord.gg/RcV7fa8).
+This plugin doesn't often change, but when I add big features or make big changes, I will occasionally join the [`#lutron-caseta-leap`](https://discord.com/channels/432663330281226270/927991341923852389) channel on the [Homebridge Discord server](https://discord.gg/RcV7fa8).
 
 ## User Information
 
