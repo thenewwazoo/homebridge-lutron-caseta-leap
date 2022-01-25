@@ -87,15 +87,21 @@ export class PicoRemote {
         (async () => {
             const bridge = await this.bridge;
 
-            let bg;
+            let bgs;
             try {
                 // TODO some remotes return multiple button groups. make this support them.
                 // see https://github.com/gurumitts/pylutron-caseta/pull/84
-                bg = await bridge.getButtonGroupFromDevice(this.accessory.context.device);
+                bgs = await bridge.getButtonGroupsFromDevice(this.accessory.context.device);
             } catch (e) {
                 this.platform.log.error('Failed to get button group(s) belonging to', fullName, e);
                 throw e;
             }
+
+            if (bgs.length > 1) {
+                throw new Error("Devices with multiple button groups not yet supported. Please file a github issue.");
+            }
+
+            const bg = bgs[0];
 
             // TODO make this behavior optional. a user may want to
             // hide remotes that are already associated with
