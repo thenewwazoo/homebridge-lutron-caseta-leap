@@ -9,7 +9,7 @@ This is a plugin that interfaces between Homebridge (and HomeKit) and the [Lutro
 
 Because HomeKit control for dimmers and switches, etc, are natively supported by the Smart Bridge, this plugin doesn't implement them. If you want to help out and add support, please see the [To-do and contributions](#to-do-and-contributions) section at the bottom of this document.
 
-This is specifically _not_ guaranteed to work with the Smart Bridge Pro, which also supports an entirely different protocol (Lutron Integration Protocol, or "LIP"). This plugin makes use of the [lutron-leap-js](https://github.com/thenewwazoo/lutron-leap-js) library, which implements the Lutron LEAP protocol, used by the Lutron mobile apps. Please let me know if it works for you (or you'd like to provide a Pro bridge I can use for testing).
+This plugin makes use of the [lutron-leap-js](https://github.com/thenewwazoo/lutron-leap-js) library, which implements the Lutron LEAP protocol, used by the Lutron mobile apps and third-party integrations. It has been tested with the non-Pro and Pro bridges, and may also be able to work with RA2 (but has not been tested).
 
 ## Support
 
@@ -122,11 +122,18 @@ In order to enable debugging, set the DEBUG environment variable in the Homebrid
 
 ## To-do and contributions
 
+The following items are on my wishlist:
+* Add support for double- and long-presses on Pico remotes
+* Extend the Serena blind support to enable the tilt characteristic directly (in addition to faking lift w/ tilt)
+* Add support for motion sensors (would require hardware donation)
+* Add/validate support for RA2 bridges (would require hardware donation)
+* Add support for authentication key auto-configuration
+
 I welcome contributions! I wrote this to scratch an itch (no Serena wood blind support), but would be fine with additional devices. To add a device:
 * Add a case to `LutronCasetaLeap.configureAccessory` and `handleBridgeDiscovery` for your new device type.
 * Add a class for your device. The constructor should wire up event handlers and manage services and characteristics.
 * Add relevant methods to the [`SmartBridge`](https://github.com/thenewwazoo/lutron-leap-js/blob/main/src/SmartBridge.ts) class in the `lutron-leap-js` project to control the device. These methods should construct command requests.
-* Add an "unsolicited events" handler in your new device class to update itself when new information arrives from the bridge, and to update characteristic values.
+* Add an "unsolicited events" and/or "subscribed event" handler in your new device class to update itself when new information arrives from the bridge, and to update characteristic values.
 
 ## Development setup
 
