@@ -98,7 +98,7 @@ export class PicoRemote {
             }
 
             if (bgs.length > 1) {
-                throw new Error("Devices with multiple button groups not yet supported. Please file a github issue.");
+                throw new Error('Devices with multiple button groups not yet supported. Please file a github issue.');
             }
 
             const bg = bgs[0];

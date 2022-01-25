@@ -24,8 +24,7 @@ interface BridgeAuthEntry {
 
 export class LutronCasetaLeap
     extends (EventEmitter as new () => TypedEmitter<PlatformEvents>)
-    implements DynamicPlatformPlugin
-{
+    implements DynamicPlatformPlugin {
     private readonly accessories: Map<string, PlatformAccessory> = new Map();
     private finder: BridgeFinder | null = null;
     private secrets: Map<string, SecretStorage>;
