@@ -175,12 +175,21 @@ export class LutronCasetaLeap
                         break;
                     }
 
+                    case 'SmartBridge':
+                    case 'WallSwitch':
+                    case 'WallDimmer':
+                    case 'CasetaFanSpeedController': {
+                        this.log.info('Device type', d.DeviceType, 'supported natively, skipping setup');
+                        continue;
+                    }
+
                     // TODO
                     case 'Pico4Button':
                     case 'Pico4ButtonScene':
                     case 'Pico4ButtonZone':
                     case 'Pico4Button2Group':
                     case 'FourGroupRemote':
+                    case 'RPSOccupancySensor':
                     default:
                         this.log.info('Device type', d.DeviceType, 'not yet supported, skipping setup');
                         continue;
