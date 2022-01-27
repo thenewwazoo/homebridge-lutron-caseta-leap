@@ -11,35 +11,6 @@ Because HomeKit control for dimmers and switches, etc, are natively supported by
 
 This plugin makes use of the [lutron-leap-js](https://github.com/thenewwazoo/lutron-leap-js) library, which implements the Lutron LEAP protocol, used by the Lutron mobile apps and third-party integrations. It has been tested with the non-Pro and Pro bridges, and may also be able to work with RA2 (but has not been tested).
 
-## Support
-
-If you need find a bug, need help with this plugin, or have questions, the best way to reach me is via a Github Issue. Please don't be shy about opening one. You can also reach me via the email address in my Github profile.
-
-This plugin doesn't often change, but when I add big features or make big changes, I will occasionally join the [`#lutron-caseta-leap`](https://discord.com/channels/432663330281226270/927991341923852389) channel on the [Homebridge Discord server](https://discord.gg/RcV7fa8).
-
-## User Information
-
-### Pico Remote Button Mapping
-
-Pico buttons are mapped according to the following diagram:
-
-![iOS Home App and Eve app screenshots showing arrows pointing from the button entries in the apps to the physical buttons on a picture of a pico remote](assets/buttons_map.png)
-
-The iOS Home app doesn't actually show button names (e.g. "On"), but only shows "Button 1". Other, better, iOS Homekit apps do, though. In any case, buttons are mapped from top-to-bottom. The top-most physical button is button 1, and is shown at the top of the list in the app.
-
-I only actually own the "3-button with raise/lower" remotes in my house, so I've had to make guesses about the other supported remotes, and defer implementing some others. Currently supported are:
-
-* [2 Button](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-2B&Section=Documents)
-* [2-Button with raise/lower](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-2BRL&Section=Documents) (*untested*)
-* [3-Button](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-3B&Section=Documents) (*untested*)
-* [3-Button with raise/lower](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-3BRL&Section=Documents)
-
-I'd love to have complete, tested support of all remote types. If you have hardware that is partially- or un-supported and, adding support is fast and easy. I would also be happy to add support for hardware that is provided to me.
-
-### Homekit and Lutron App collision
-
-Right now, all known Pico remotes are shown in the Home app. This means their functionality is duplicated, in a sense. Configuration in Homekit has no effect on operation with paired accessories, or anything else in the Lutron app. Let me know if you'd like to hide remotes that are paired, as it's possible but not currently enabled.
-
 ## Preparation
 
 ### Get your bridge ID
@@ -115,6 +86,43 @@ The shape of the configuration is:
 ```
 
 The authn strings are newline-escaped versions of the files you generated.
+
+## User Information
+
+### Adding and Removing Devices
+
+In order to add a device to the hub, you must use the Lutron app to pair the device. This plugin will re-scan the known devices 30 seconds after you announce the device. This means you must **complete adding the device in less than 30 seconds** in order for the device to appear in HomeKit without restarting the plugin. If you _do_ miss that deadline, don't worry: the device will appear after you restart Homebridge.
+
+If you remove a **Pico Remote** device from the hub, it will disappear from Homekit after the next time you restart Homebridge.
+
+If you remove **any other device type** (by which, I suppose, I mean a Serena blind), you must [delete the cached accessory out of Homebridge manually](https://github.com/oznu/homebridge-config-ui-x/issues/525).
+
+### Pico Remote Button Mapping
+
+Pico buttons are mapped according to the following diagram:
+
+![iOS Home App and Eve app screenshots showing arrows pointing from the button entries in the apps to the physical buttons on a picture of a pico remote](assets/buttons_map.png)
+
+The iOS Home app doesn't actually show button names (e.g. "On"), but only shows "Button 1". Other, better, iOS Homekit apps do, though. In any case, buttons are mapped from top-to-bottom. The top-most physical button is button 1, and is shown at the top of the list in the app.
+
+I don't own one of every remote type, so I've had to make guesses about the other supported remotes, and defer implementing some others. Currently supported are:
+
+* [2 Button](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-2B&Section=Documents)
+* [2-Button with raise/lower](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-2BRL&Section=Documents)
+* [3-Button](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-3B&Section=Documents) (*untested*)
+* [3-Button with raise/lower](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-3BRL&Section=Documents)
+
+I'd love to have complete, tested support of all remote types. If you have hardware that is partially- or un-supported and, adding support is fast and easy. I would also be happy to add support for hardware that is provided to me.
+
+### Homekit and Lutron App collision
+
+Right now, all known Pico remotes are shown in the Home app. This means their functionality is duplicated, in a sense. Configuration in Homekit has no effect on operation with paired accessories, or anything else in the Lutron app. Let me know if you'd like to hide remotes that are paired, as it's possible but not currently enabled.
+
+## Support
+
+If you need find a bug, need help with this plugin, or have questions, the best way to reach me is via a Github Issue. Please don't be shy about opening one. You can also reach me via the email address in my Github profile.
+
+This plugin doesn't often change, but when I add big features or make big changes, I will occasionally join the [`#lutron-caseta-leap`](https://discord.com/channels/432663330281226270/927991341923852389) channel on the [Homebridge Discord server](https://discord.gg/RcV7fa8).
 
 ## Enabling debugging
 

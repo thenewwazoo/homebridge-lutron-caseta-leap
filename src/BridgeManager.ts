@@ -1,6 +1,16 @@
 import { SmartBridge } from 'lutron-leap';
 
 export class BridgeManager {
+    /* When restoring accessories from the cache, the mDNS-based bridge
+     * autodetection isn't yet running. This means we know the ID of a bridge
+     * that we _expect_ to discover. In order to defer the operations that
+     * require a connection to that bridge (such as subscribing to button
+     * events), getBridge returns a Promise for the bridge. We store its
+     * resolve and reject functions in the `pendingBridges` map. When it arrives,
+     * we resolve the promise and store the connected bridge in the `bridges`
+     * map. Because a bridge can be requested multiple times, we store an array
+     * of resolve/reject pairs, and resolve them all.
+     */
     private bridges: Map<string, SmartBridge> = new Map();
     private pendingBridges: Map<string, Array<[(bridge: SmartBridge) => void, ReturnType<typeof setTimeout>]>> =
         new Map(); // whew, that's a gnarly spec.
