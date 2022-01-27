@@ -35,11 +35,18 @@ export class LutronCasetaLeap
 
         log.info('LutronCasetaLeap starting up...');
 
+        process.on('warning', (e) => this.log.warn(`Got ${e.name} process warning: ${e.message}:\n${e.stack}`));
+
         this.secrets = this.secretsFromConfig(config);
         if (this.secrets.size === 0) {
             log.warn('No bridge auth configured. Retiring.');
             return;
         }
+
+        // Each device will subscribe to 'unsolicited', which means we very
+        // quickly hit the limit for EventEmitters. Set this limit to the
+        // number of bridges times the per-bridge device limit.
+        this.setMaxListeners(75 * this.secrets.size);
 
         /*
          * When this event is fired, homebridge restored all cached accessories from disk and did call their respective
