@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { BridgeFinder, Device, Response, SmartBridge, SecretStorage } from 'lutron-leap';
+import { BridgeFinder, Device, OneDeviceStatus, Response, SmartBridge, SecretStorage } from 'lutron-leap';
 
 import { API, APIEvent, DynamicPlatformPlugin, Logging, PlatformAccessory, PlatformConfig } from 'homebridge';
 
@@ -103,11 +103,7 @@ export class LutronCasetaLeap
                     'on bridge',
                     accessory.context.bridgeID,
                 );
-                try {
-                    new PicoRemote(this, accessory, bridge);
-                } catch (e) {
-                    this.log.error('Failed to set up cached Pico remote as expected:', e);
-                }
+                new PicoRemote(this, accessory, bridge);
                 break;
             }
             default:
@@ -127,80 +123,96 @@ export class LutronCasetaLeap
             return;
         }
         this.bridgeMgr.addBridge(bridge);
+        this.processAllDevices(bridge);
+    }
 
-        bridge.getDeviceInfo().then(async (devices: Device[]) => {
-            for (const d of devices) {
-                const uuid = this.api.hap.uuid.generate(d.SerialNumber.toString());
-                if (this.accessories.has(uuid)) {
-                    this.log.info(
-                        'Accessory',
-                        d.DeviceType,
-                        uuid,
-                        d.FullyQualifiedName.join(' '),
-                        'already set up. Skipping.',
-                    );
-                    continue;
-                }
-
-                const fullName = d.FullyQualifiedName.join(' ');
-
-                const accessory = new this.api.platformAccessory(fullName, uuid);
-                accessory.context.device = d;
-                accessory.context.bridgeID = bridge.bridgeID;
-
-                switch (d.DeviceType) {
-                    case 'SerenaTiltOnlyWoodBlind': {
-                        this.log.info('Found a new Serena blind:', fullName);
-
-                        // SIDE EFFECT: this constructor mutates the accessory object
-                        new SerenaTiltOnlyWoodBlinds(this, accessory, this.bridgeMgr.getBridge(bridge.bridgeID));
-
-                        break;
+    private processAllDevices(bridge: SmartBridge) {
+        bridge
+            .getDeviceInfo()
+            .then(async (devices: Device[]) => {
+                for (const d of devices) {
+                    try {
+                        this.processDevice(bridge, d);
+                    } catch (e) {
+                        this.log.error('Failed to process device', d.FullyQualifiedName.join(' '));
                     }
-
-                    case 'Pico2Button':
-                    case 'Pico2ButtonRaiseLower':
-                    case 'Pico3Button':
-                    case 'Pico3ButtonRaiseLower': {
-                        this.log.info('Found a new', d.DeviceType, 'remote', fullName);
-
-                        // SIDE EFFECT: this constructor mutates the accessory object
-                        try {
-                            new PicoRemote(this, accessory, this.bridgeMgr.getBridge(bridge.bridgeID));
-                        } catch (e) {
-                            this.log.error('Failed to set up Pico', fullName, e);
-                            continue;
-                        }
-
-                        break;
-                    }
-
-                    // TODO
-                    case 'Pico4Button':
-                    case 'Pico4ButtonScene':
-                    case 'Pico4ButtonZone':
-                    case 'Pico4Button2Group':
-                    case 'FourGroupRemote':
-                    default:
-                        this.log.info('Device type', d.DeviceType, 'not yet supported, skipping setup');
-                        continue;
                 }
-                try {
-                    this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-                } catch (e) {
-                    this.log.error(`Could not register ${d.DeviceType} named ${fullName} with uuid ${uuid}: ${e}`);
-                    continue;
-                }
-                this.accessories.set(uuid, accessory);
-            }
-        });
+            })
+            .catch((e) => {
+                this.log.error(`Failed to process devices on new bridge ${bridge.bridgeID}: ${e}`);
+            });
 
         bridge.on('unsolicited', this.handleUnsolicitedMessage.bind(this));
     }
 
-    handleUnsolicitedMessage(bridgeID: string, response: Response): void {
+    processDevice(bridge: SmartBridge, d: Device) {
+        const fullName = d.FullyQualifiedName.join(' ');
+        const uuid = this.api.hap.uuid.generate(d.SerialNumber.toString());
+
+        if (this.accessories.has(uuid)) {
+            this.log.info('Accessory', d.DeviceType, uuid, fullName, 'already set up. Skipping.');
+            return;
+        }
+
+        const accessory = new this.api.platformAccessory(fullName, uuid);
+        accessory.context.device = d;
+        accessory.context.bridgeID = bridge.bridgeID;
+
+        switch (d.DeviceType) {
+            case 'SerenaTiltOnlyWoodBlind': {
+                this.log.info('Found a new Serena blind:', fullName);
+
+                // SIDE EFFECT: this constructor mutates the accessory object
+                new SerenaTiltOnlyWoodBlinds(this, accessory, this.bridgeMgr.getBridge(bridge.bridgeID));
+
+                break;
+            }
+
+            case 'Pico2Button':
+            case 'Pico2ButtonRaiseLower':
+            case 'Pico3Button':
+            case 'Pico3ButtonRaiseLower': {
+                this.log.info('Found a new', d.DeviceType, 'remote', fullName);
+
+                // SIDE EFFECT: this constructor mutates the accessory object
+                new PicoRemote(this, accessory, this.bridgeMgr.getBridge(bridge.bridgeID));
+
+                break;
+            }
+
+            // TODO
+            case 'Pico4Button':
+            case 'Pico4ButtonScene':
+            case 'Pico4ButtonZone':
+            case 'Pico4Button2Group':
+            case 'FourGroupRemote':
+            default:
+                this.log.info('Device type', d.DeviceType, 'not yet supported, skipping setup');
+                return;
+        }
+
+        try {
+            this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+        } catch (e) {
+            this.log.error(`Could not register ${d.DeviceType} named ${fullName} with uuid ${uuid}: ${e}`);
+            return;
+        }
+
+        this.accessories.set(uuid, accessory);
+    }
+
+    handleUnsolicitedMessage(bridgeID: string, response: Response) {
         this.log.debug('bridge', bridgeID, 'got unsolicited message', response);
-        // publish the message, and let the accessories figure out who it's for
-        this.emit('unsolicited', response);
+
+        if (response.CommuniqueType === 'UpdateResponse' && response.Header.Url === '/device/status/deviceheard') {
+            const heardDevice = (response.Body! as OneDeviceStatus).DeviceStatus.DeviceHeard;
+            this.log.info(`New ${heardDevice.DeviceType} s/n ${heardDevice.SerialNumber}. Triggering refresh in 30s.`);
+            this.bridgeMgr
+                .getBridge(bridgeID)
+                .then((bridge: SmartBridge) => setTimeout(() => this.processAllDevices(bridge), 30000))
+                .catch((e) => this.log.error('Failed to trigger device refresh due to newly-heard device:', e));
+        } else {
+            this.emit('unsolicited', response);
+        }
     }
 }
