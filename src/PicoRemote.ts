@@ -1,7 +1,8 @@
 import { Service, PlatformAccessory } from 'homebridge';
 
 import { LutronCasetaLeap } from './platform';
-import { OneButtonStatusEvent, Response, SmartBridge } from 'lutron-leap';
+import { PLUGIN_NAME, PLATFORM_NAME } from './settings';
+import { ExceptionDetail, OneButtonStatusEvent, Response, SmartBridge } from 'lutron-leap';
 
 import { inspect } from 'util';
 
@@ -103,6 +104,10 @@ export class PicoRemote {
 
             const bg = bgs[0];
 
+            if (bg instanceof ExceptionDetail) {
+                throw new Error('device has been removed');
+            }
+
             // TODO make this behavior optional. a user may want to
             // hide remotes that are already associated with
             // devices
@@ -165,7 +170,12 @@ export class PicoRemote {
                 this.platform.log.debug(`subscribing to ${button.href} events`);
                 bridge.client.subscribe(button.href + '/status/event', this.handleEvent.bind(this), 'SubscribeRequest');
             }
-        })().then(() => this.platform.log.info('Finished setting up Pico remote', fullName));
+        })()
+            .then(() => this.platform.log.info('Finished setting up Pico remote', fullName))
+            .catch((e) => {
+                this.platform.log.error('Failed setting up Pico remote:', e);
+                platform.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+            });
 
         this.platform.on('unsolicited', this.handleUnsolicited.bind(this));
     }
