@@ -193,7 +193,7 @@ export class LutronCasetaLeap
             case 'WallDimmer':
             case 'CasetaFanSpeedController': {
                 this.log.info('Device type', d.DeviceType, 'supported natively, skipping setup');
-                continue;
+                return;
             }
 
             // TODO
@@ -205,13 +205,13 @@ export class LutronCasetaLeap
             case 'FourGroupRemote':
             case 'RPSOccupancySensor': {
                 this.log.info('Device type', d.DeviceType, 'not yet supported, skipping setup');
-                continue;
+                return;
             }
 
             // any device we don't know about yet
             default:
                 this.log.info('Device type', d.DeviceType, 'not recognized, skipping setup');
-                continue;
+                return;
         }
 
         try {
