@@ -187,14 +187,30 @@ export class LutronCasetaLeap
                 break;
             }
 
+            // known devices that are exposed directly to homekit
+            case 'SmartBridge':
+            case 'WallSwitch':
+            case 'WallDimmer':
+            case 'CasetaFanSpeedController': {
+                this.log.info('Device type', d.DeviceType, 'supported natively, skipping setup');
+                return;
+            }
+
             // TODO
+            // known devices that are not exposed to homekit, pending support
             case 'Pico4Button':
             case 'Pico4ButtonScene':
             case 'Pico4ButtonZone':
             case 'Pico4Button2Group':
             case 'FourGroupRemote':
-            default:
+            case 'RPSOccupancySensor': {
                 this.log.info('Device type', d.DeviceType, 'not yet supported, skipping setup');
+                return;
+            }
+
+            // any device we don't know about yet
+            default:
+                this.log.info('Device type', d.DeviceType, 'not recognized, skipping setup');
                 return;
         }
 
