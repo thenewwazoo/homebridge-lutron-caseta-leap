@@ -23,11 +23,13 @@ The bridge ID is the serial number, and is printed on the underside of the bridg
 
 The easiest way is to use the [`get_lutron_cert.py`](https://github.com/gurumitts/pylutron-caseta/blob/dev/get_lutron_cert.py) script that comes with the [`pylutron-caseta`](https://github.com/gurumitts/pylutron-caseta) project, without which this would not have been possible.
 
+*NOTE*: these instructions require Python 3, which you may need to [install it yourself](https://www.python.org/downloads/).
+
 *NOTE*: these instructions may be out of date! If this doesn't work, please read the script itself.
 
 To use the script, you'll want to check out the repo:
 ```
-git clone https://github.com/gurumitts/pylutron-caseta.git
+git clone https://github.com/gurumitts/pylutron-caseta.git && cd pylutron-caseta
 ```
 
 Then, create a venv and install the depedencies:
