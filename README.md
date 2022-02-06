@@ -95,9 +95,7 @@ The authn strings are newline-escaped versions of the files you generated.
 
 In order to add a device to the hub, you must use the Lutron app to pair the device. This plugin will re-scan the known devices 30 seconds after you announce the device. This means you must **complete adding the device in less than 30 seconds** in order for the device to appear in HomeKit without restarting the plugin. If you _do_ miss that deadline, don't worry: the device will appear after you restart Homebridge.
 
-If you remove a **Pico Remote** device from the hub, it will disappear from Homekit after the next time you restart Homebridge.
-
-If you remove **any other device type** (by which, I suppose, I mean a Serena blind), you must [delete the cached accessory out of Homebridge manually](https://github.com/oznu/homebridge-config-ui-x/issues/525).
+To remove a device from Homebridge after you're removed it from the Smart Bridge 2, you must [delete the cached accessory out of Homebridge manually](https://github.com/oznu/homebridge-config-ui-x/issues/525).
 
 ### Pico Remote Button Mapping
 
