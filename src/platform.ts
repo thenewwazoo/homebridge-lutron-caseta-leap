@@ -10,6 +10,10 @@ import { SerenaTiltOnlyWoodBlinds } from './SerenaTiltOnlyWoodBlinds';
 import { PicoRemote } from './PicoRemote';
 import { BridgeManager } from './BridgeManager';
 
+import fs from 'fs';
+import v8 from 'v8';
+import process from 'process';
+
 interface PlatformEvents {
     unsolicited: (response: Response) => void;
 }
@@ -62,6 +66,15 @@ export class LutronCasetaLeap
             this.finder.on('failed', (error) => {
                 log.error('Could not connect to discovered hub:', error);
             });
+        });
+
+        process.on('SIGUSR2', () => {
+            const fileName = `/tmp/lutron.${Date.now()}.heapsnapshot`;
+            this.log.warn(`Got request to dump heap. Dumping to ${fileName}`);
+            const snapshotStream = v8.getHeapSnapshot();
+            const fileStream = fs.createWriteStream(fileName);
+            snapshotStream.pipe(fileStream);
+            this.log.info(`Heap dump to ${fileName} finished.`);
         });
 
         log.info('LutronCasetaLeap plugin finished early initialization');
