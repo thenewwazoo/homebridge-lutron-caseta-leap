@@ -1,7 +1,6 @@
 import { Service, PlatformAccessory } from 'homebridge';
 
 import { LutronCasetaLeap } from './platform';
-import { PLUGIN_NAME, PLATFORM_NAME } from './settings';
 import { ExceptionDetail, OneButtonStatusEvent, Response, SmartBridge } from 'lutron-leap';
 
 import { inspect } from 'util';
@@ -174,7 +173,6 @@ export class PicoRemote {
             .then(() => this.platform.log.info('Finished setting up Pico remote', fullName))
             .catch((e) => {
                 this.platform.log.error('Failed setting up Pico remote:', e);
-                platform.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
             });
 
         this.platform.on('unsolicited', this.handleUnsolicited.bind(this));
