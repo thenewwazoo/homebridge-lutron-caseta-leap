@@ -7,11 +7,11 @@ import {
 } from 'homebridge';
 
 import { LutronCasetaLeap } from './platform';
-import { OneZoneStatus, Response, SmartBridge, Device } from 'lutron-leap';
+import { OneZoneStatus, Response, SmartBridge, DeviceDefinition } from 'lutron-leap';
 
 export class SerenaTiltOnlyWoodBlinds {
     private service: Service;
-    private device: Device;
+    private device: DeviceDefinition;
 
     constructor(
         private readonly platform: LutronCasetaLeap,

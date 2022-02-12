@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { BridgeFinder, Device, OneDeviceStatus, Response, SmartBridge, SecretStorage } from 'lutron-leap';
+import { BridgeFinder, DeviceDefinition, OneDeviceStatus, Response, SmartBridge, SecretStorage } from 'lutron-leap';
 
 import { API, APIEvent, DynamicPlatformPlugin, Logging, PlatformAccessory, PlatformConfig } from 'homebridge';
 
@@ -8,6 +8,7 @@ import TypedEmitter from 'typed-emitter';
 import { PLUGIN_NAME, PLATFORM_NAME } from './settings';
 import { SerenaTiltOnlyWoodBlinds } from './SerenaTiltOnlyWoodBlinds';
 import { PicoRemote } from './PicoRemote';
+import { OccupancySensor } from './OccupancySensor';
 import { BridgeManager } from './BridgeManager';
 
 import fs from 'fs';
@@ -143,16 +144,17 @@ export class LutronCasetaLeap
             return;
         }
         this.bridgeMgr.addBridge(bridge);
+
         this.processAllDevices(bridge);
     }
 
     private processAllDevices(bridge: SmartBridge) {
         bridge
             .getDeviceInfo()
-            .then(async (devices: Device[]) => {
+            .then(async (devices: DeviceDefinition[]) => {
                 for (const d of devices) {
                     try {
-                        this.processDevice(bridge, d);
+                        await this.processDevice(bridge, d);
                     } catch (e) {
                         this.log.error('Failed to process device', d.FullyQualifiedName.join(' '));
                     }
@@ -165,7 +167,7 @@ export class LutronCasetaLeap
         bridge.on('unsolicited', this.handleUnsolicitedMessage.bind(this));
     }
 
-    processDevice(bridge: SmartBridge, d: Device) {
+    async processDevice(bridge: SmartBridge, d: DeviceDefinition) {
         const fullName = d.FullyQualifiedName.join(' ');
         const uuid = this.api.hap.uuid.generate(d.SerialNumber.toString());
 
@@ -174,7 +176,8 @@ export class LutronCasetaLeap
             return;
         }
 
-        const accessory = new this.api.platformAccessory(fullName, uuid);
+        const accessory: PlatformAccessory<Record<string, DeviceDefinition | string>> | void =
+            new this.api.platformAccessory(fullName, uuid);
         accessory.context.device = d;
         accessory.context.bridgeID = bridge.bridgeID;
 
@@ -200,6 +203,14 @@ export class LutronCasetaLeap
                 break;
             }
 
+            case 'RPSOccupancySensor': {
+                this.log.info(`Found a new ${d.DeviceType} occupancy sensor ${fullName}`);
+
+                const sensor = new OccupancySensor(this, accessory, this.bridgeMgr.getBridge(bridge.bridgeID));
+                await sensor.initialize();
+                break;
+            }
+
             // known devices that are exposed directly to homekit
             case 'SmartBridge':
             case 'WallSwitch':
@@ -215,8 +226,7 @@ export class LutronCasetaLeap
             case 'Pico4ButtonScene':
             case 'Pico4ButtonZone':
             case 'Pico4Button2Group':
-            case 'FourGroupRemote':
-            case 'RPSOccupancySensor': {
+            case 'FourGroupRemote': {
                 this.log.info('Device type', d.DeviceType, 'not yet supported, skipping setup');
                 return;
             }
