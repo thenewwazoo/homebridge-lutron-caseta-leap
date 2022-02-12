@@ -167,7 +167,7 @@ export class PicoRemote {
                 this.services.set(button.href, service);
 
                 this.platform.log.debug(`subscribing to ${button.href} events`);
-                bridge.client.subscribe(button.href + '/status/event', this.handleEvent.bind(this), 'SubscribeRequest');
+                bridge.subscribeToButton(button, this.handleEvent.bind(this));
             }
         })()
             .then(() => this.platform.log.info('Finished setting up Pico remote', fullName))
