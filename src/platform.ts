@@ -71,6 +71,13 @@ export class LutronCasetaLeap
 
         process.on('SIGUSR2', () => {
             const fileName = `/tmp/lutron.${Date.now()}.heapsnapshot`;
+            const usage = process.memoryUsage();
+            this.log.warn(`Current memory usage:
+                          rss=${usage.rss},
+                          heapTotal=${usage.heapTotal},
+                          heapUsed=${usage.heapUsed},
+                          external=${usage.external},
+                          arrayBuffers=${usage.arrayBuffers}`);
             this.log.warn(`Got request to dump heap. Dumping to ${fileName}`);
             const snapshotStream = v8.getHeapSnapshot();
             const fileStream = fs.createWriteStream(fileName);
