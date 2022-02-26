@@ -11,83 +11,21 @@ Because HomeKit control for dimmers and switches, etc, are natively supported by
 
 This plugin makes use of the [lutron-leap-js](https://github.com/thenewwazoo/lutron-leap-js) library, which implements the Lutron LEAP protocol, used by the Lutron mobile apps and third-party integrations. It has been tested with the non-Pro and Pro bridges, and may also be able to work with RA2 (but has not been tested).
 
-## Preparation
-
-### Get your bridge ID
-
-The bridge ID is the serial number, and is printed on the underside of the bridge, indicated here in green:
-
-![picture of the underside of a bridge, showing the sticker with the ID on it](assets/bridge.png)
-
-### Get your bridge credentials
-
-The easiest way is to use the [`get_lutron_cert.py`](https://github.com/gurumitts/pylutron-caseta/blob/dev/get_lutron_cert.py) script that comes with the [`pylutron-caseta`](https://github.com/gurumitts/pylutron-caseta) project, without which this would not have been possible.
-
-*NOTE*: these instructions require Python 3, which you may need to [install it yourself](https://www.python.org/downloads/).
-
-*NOTE*: these instructions may be out of date! If this doesn't work, please read the script itself.
-
-To use the script, you'll want to check out the repo:
-```
-git clone https://github.com/gurumitts/pylutron-caseta.git && cd pylutron-caseta
-```
-
-Then, create a venv and install the depedencies:
-```
-python3 -m venv env
-. env/bin/activate
-pip install pyOpenSSL==19.1.0
-pip install .
-```
-
-Then run the helper script:
-```
-python get_lutron_cert.py
-```
-
-Each file corresponds to a configuration item:
-* `caseta-bridge.crt` => CA certificate
-* `caseta.key` => Private key
-* `caseta.crt` => Signed certificate
-
-## Installation
+## Installation and Setup
 
 Either run `npm -i homebridge-lutron-caseta-leap` in your Homebridge installation directory or install it using [`homebridge-config-ui-x`](https://github.com/oznu/homebridge-config-ui-x#readme).
 
-## Configuration
+Once that's done, open the configuration screen:
 
-Each bridge on your network that you wish to control needs its own configuration entry.
+![view of all installed plugins](assets/plugin_top_view.png)
 
-### Using `homebridge-config-ui-x`
+Click "Settings" for this plugin. You should see your bridges listed. I only have one, but if you have more, they'll appear here. They are discovered automatically.
 
-If you're using the GUI, you'll want to fill out the form, copying and pasting in the appropriate fields:
+![view of discovered bridges](assets/unassociated.png)
 
-![a screenshot of the configuration UI, with fields filled with the contents of certificate files](assets/config.png)
+Click on "Associate", and then press the button on the back of your Smart Bridge 2 device within 30 seconds. The UI will update, and if all goes well, you will see:
 
-The UI will handle multi-line input, so just paste it in.
-
-Click the "ADD SECRETS" button to add additional bridges.
-
-### Using `config.json`
-
-The shape of the configuration is:
-
-```json
-{
-    "platform": "LutronCasetaLeap",
-        "secrets": [
-            {
-                "bridgeid": "0a1b2c3d",
-                "ca": "-----BEGIN CERTIFICATE-----\nMII...",
-                "key": "-----BEGIN PRIVATE KEY-----\nMII...",
-                "cert": "-----BEGIN CERTIFICATE-----\nMII..."
-            },
-            { ... }
-        ]
-}
-```
-
-The authn strings are newline-escaped versions of the files you generated.
+![view of a single successfully-connected bridge](assets/associated.png)
 
 ## User Information
 
@@ -154,3 +92,80 @@ I welcome contributions! I wrote this to scratch an itch (no Serena wood blind s
 * Make changes here
 * `rm ~/.homebridge/accessories/cachedAccessories; DEBUG='leap:*,HAP-NodeJS:Accessory' npm run watch`
 * `npm run lint`
+
+## Legacy Configuration
+
+> :warning: **This only applies if the UI doesn't work for you**: If that's the case, please file a ticket too.
+
+### Get your bridge ID
+
+The bridge ID is the serial number, and is printed on the underside of the bridge, indicated here in green:
+
+![picture of the underside of a bridge, showing the sticker with the ID on it](assets/bridge.png)
+
+### Get your bridge credentials
+
+The easiest way is to use the [`get_lutron_cert.py`](https://github.com/gurumitts/pylutron-caseta/blob/dev/get_lutron_cert.py) script that comes with the [`pylutron-caseta`](https://github.com/gurumitts/pylutron-caseta) project, without which this would not have been possible.
+
+*NOTE*: these instructions require Python 3, which you may need to [install it yourself](https://www.python.org/downloads/).
+
+*NOTE*: these instructions may be out of date! If this doesn't work, please read the script itself.
+
+To use the script, you'll want to check out the repo:
+```
+git clone https://github.com/gurumitts/pylutron-caseta.git && cd pylutron-caseta
+```
+
+Then, create a venv and install the depedencies:
+```
+python3 -m venv env
+. env/bin/activate
+pip install pyOpenSSL==19.1.0
+pip install .
+```
+
+Then run the helper script:
+```
+python get_lutron_cert.py
+```
+
+Each file corresponds to a configuration item:
+* `caseta-bridge.crt` => CA certificate
+* `caseta.key` => Private key
+* `caseta.crt` => Signed certificate
+
+## Legacy Configuration File
+
+Each bridge on your network that you wish to control needs its own configuration entry.
+
+### Using `homebridge-config-ui-x`
+
+If you're using the GUI, you'll want to fill out the form, copying and pasting in the appropriate fields:
+
+![a screenshot of the configuration UI, with fields filled with the contents of certificate files](assets/config.png)
+
+The UI will handle multi-line input, so just paste it in.
+
+Click the "ADD SECRETS" button to add additional bridges.
+
+### Using `config.json`
+
+The shape of the configuration is:
+
+```json
+{
+    "platform": "LutronCasetaLeap",
+        "secrets": [
+            {
+                "bridgeid": "0a1b2c3d",
+                "ca": "-----BEGIN CERTIFICATE-----\nMII...",
+                "key": "-----BEGIN PRIVATE KEY-----\nMII...",
+                "cert": "-----BEGIN CERTIFICATE-----\nMII..."
+            },
+            { ... }
+        ]
+}
+```
+
+The authn strings are newline-escaped versions of the files you generated.
+
