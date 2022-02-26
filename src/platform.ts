@@ -1,5 +1,14 @@
 import { EventEmitter } from 'events';
-import { BridgeFinder, DeviceDefinition, OneDeviceStatus, Response, SmartBridge, SecretStorage } from 'lutron-leap';
+import {
+    BridgeFinder,
+    BridgeNetInfo,
+    DeviceDefinition,
+    LEAP_PORT,
+    LeapClient,
+    OneDeviceStatus,
+    Response,
+    SmartBridge,
+} from 'lutron-leap';
 
 import { API, APIEvent, DynamicPlatformPlugin, Logging, PlatformAccessory, PlatformConfig } from 'homebridge';
 
@@ -32,13 +41,15 @@ export class LutronCasetaLeap
     implements DynamicPlatformPlugin {
     private readonly accessories: Map<string, PlatformAccessory> = new Map();
     private finder: BridgeFinder | null = null;
-    private secrets: Map<string, SecretStorage>;
-    private bridgeMgr = new BridgeManager();
+    private secrets: Map<string, BridgeAuthEntry>;
+    private bridgeMgr;
 
     constructor(public readonly log: Logging, public readonly config: PlatformConfig, public readonly api: API) {
         super();
 
         log.info('LutronCasetaLeap starting up...');
+
+        this.bridgeMgr = new BridgeManager(this);
 
         process.on('warning', (e) => this.log.warn(`Got ${e.name} process warning: ${e.message}:\n${e.stack}`));
 
@@ -62,11 +73,12 @@ export class LutronCasetaLeap
         api.on(APIEvent.DID_FINISH_LAUNCHING, () => {
             log.info('Finished launching; starting up automatic discovery');
 
-            this.finder = new BridgeFinder(this.secrets);
+            this.finder = new BridgeFinder();
             this.finder.on('discovered', this.handleBridgeDiscovery.bind(this));
             this.finder.on('failed', (error) => {
                 log.error('Could not connect to discovered hub:', error);
             });
+            this.finder.beginSearching();
         });
 
         process.on('SIGUSR2', () => {
@@ -88,13 +100,14 @@ export class LutronCasetaLeap
         log.info('LutronCasetaLeap plugin finished early initialization');
     }
 
-    secretsFromConfig(config: PlatformConfig): Map<string, SecretStorage> {
+    secretsFromConfig(config: PlatformConfig): Map<string, BridgeAuthEntry> {
         const out = new Map();
         for (const entry of config.secrets as Array<BridgeAuthEntry>) {
             out.set(entry.bridgeid.toLowerCase(), {
                 ca: entry.ca,
                 key: entry.key,
                 cert: entry.cert,
+                bridgeid: entry.bridgeid,
             });
         }
         return out;
@@ -143,16 +156,21 @@ export class LutronCasetaLeap
 
     // ----- CUSTOM METHODS
 
-    private handleBridgeDiscovery(bridge: SmartBridge) {
-        if (this.bridgeMgr.hasBridge(bridge.bridgeID)) {
+    private handleBridgeDiscovery(bridgeInfo: BridgeNetInfo) {
+        if (this.bridgeMgr.hasBridge(bridgeInfo.bridgeid)) {
             // we've already discovered this bridge, move along
-            this.log.info('Bridge', bridge.bridgeID, 'already known, closing.');
-            bridge.close();
+            this.log.info('Bridge', bridgeInfo.bridgeid, 'already known, closing.');
             return;
         }
-        this.bridgeMgr.addBridge(bridge);
-
-        this.processAllDevices(bridge);
+        if (this.secrets.has(bridgeInfo.bridgeid.toLowerCase())) {
+            const these = this.secrets.get(bridgeInfo.bridgeid.toLowerCase())!;
+            this.log.debug('bridge', bridgeInfo.bridgeid, 'has secrets', JSON.stringify(these));
+            const client = new LeapClient(bridgeInfo.ipAddr, LEAP_PORT, these.ca, these.key, these.cert);
+            const bridge = new SmartBridge(bridgeInfo.bridgeid.toLowerCase(), client);
+            this.bridgeMgr.addBridge(bridge);
+        } else {
+            throw new Error('no credentials for bridge ID ' + bridgeInfo.bridgeid);
+        }
     }
 
     private processAllDevices(bridge: SmartBridge) {
