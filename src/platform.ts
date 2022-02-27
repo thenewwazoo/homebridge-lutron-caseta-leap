@@ -148,6 +148,20 @@ export class LutronCasetaLeap
                 new PicoRemote(this, accessory, bridge);
                 break;
             }
+
+            case 'RPSOccupancySensor': {
+                this.log.info(
+                    'Restoring occupancy sensor',
+                    accessory.context.device.FullyQualifiedName.join(' '),
+                    'on bridge',
+                    accessory.context.bridgeID,
+                );
+
+                const sensor = new OccupancySensor(this, accessory, bridge);
+                sensor.initialize().then(() => this.log.debug('Finished setting up occupancy sensor'));
+                break;
+            }
+
             default:
                 this.log.warn(`Accessory ${util.inspect(accessory)} was cached but is not supported. Did you downgrade?`);
         }

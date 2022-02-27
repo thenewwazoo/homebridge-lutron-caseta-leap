@@ -9,27 +9,30 @@
 </div>
 
 <script>
-    document.getElementById('schemapop').addEventListener('click', () => {
-        document.getElementById('bridges').innerHTML = '';
-        document.getElementById('schemapop').innerHTML = '';
-        homebridge.showSchemaForm();
-        window.homebridge.addEventListener('configChanged', (event) => {
-            console.log('Updated config:', event.data);
+    function bootstrapConfig(pluginConfig) {
+        if (pluginConfig.length === 0) {
+            console.log("no configuration detected. bootstrapping.");
+            pluginConfig = [{name: "Lutron", platform: "LutronCasetaLeap", secrets: []}];
+        }
+        if (pluginConfig[0].secrets === undefined) {
+            console.log("configuration with no secrets. bootstrapping.");
+            pluginConfig[0].secrets = new Array();
+        }
+        return pluginConfig;
+    }
+
+    document.getElementById('schemapopbtn').addEventListener('click', () => {
+        homebridge.getPluginConfig().then((pluginConfig) => {
+            document.getElementById('bridges').innerHTML = '';
+            document.getElementById('schemapop').innerHTML = '';
+            pluginConfig = bootstrapConfig(pluginConfig);
+            homebridge.updatePluginConfig(pluginConfig).then(() => homebridge.showSchemaForm());
         });
     });
 
     async function updateConfigFromMap(pluginConfig, secretsMap) {
-        console.log('here is plc');
-        console.dir(pluginConfig);
-
-        if (pluginConfig.length === 0) {
-            pluginConfig = [ { secrets: new Array() } ];
-        } else if (pluginConfig[0].secrets === undefined) {
-            pluginConfig[0].secrets = new Array();
-        }
-
+        pluginConfig = bootstrapConfig(pluginConfig);
         pluginConfig[0].secrets = Array.from(secretsMap.values());
-
         await homebridge.updatePluginConfig(pluginConfig);
     }
 
@@ -41,9 +44,8 @@
         }
 
         let secretMap = new Map();
-        if (pluginConfig[0].secrets !== undefined) {
-            secretMap = new Map(pluginConfig[0].secrets.map((o) => [o.bridgeid.toUpperCase(), o]));
-        }
+        pluginConfig = bootstrapConfig(pluginConfig);
+        secretMap = new Map(pluginConfig[0].secrets.map((o) => [o.bridgeid.toUpperCase(), o]));
         let bridgeMap = new Map();
 
         homebridge.showSpinner();
