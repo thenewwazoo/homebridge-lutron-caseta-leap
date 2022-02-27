@@ -21,7 +21,15 @@
     async function updateConfigFromMap(pluginConfig, secretsMap) {
         console.log('here is plc');
         console.dir(pluginConfig);
+
+        if (pluginConfig.length === 0) {
+            pluginConfig = [ { secrets: new Array() } ];
+        } else if (pluginConfig[0].secrets === undefined) {
+            pluginConfig[0].secrets = new Array();
+        }
+
         pluginConfig[0].secrets = Array.from(secretsMap.values());
+
         await homebridge.updatePluginConfig(pluginConfig);
     }
 
@@ -71,6 +79,11 @@
             function handleConnected(event) {
                 console.log('success connected to bridge', event.data);
                 const b = bridgeMap.get(event.data);
+                if (b === undefined) {
+                    console.error('failed trying to get connected bridge', event.data, 'from map');
+                    console.dir(bridgeMap);
+                    throw new Error("could not find connected bridge " + event.data + " in map");
+                }
                 b.toAssociated(() => {
                     deleteBridgeSecret(event.data, secretMap);
                 });
