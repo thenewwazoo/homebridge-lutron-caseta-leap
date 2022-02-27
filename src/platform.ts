@@ -23,6 +23,7 @@ import { BridgeManager } from './BridgeManager';
 import fs from 'fs';
 import v8 from 'v8';
 import process from 'process';
+import * as util from 'util';
 
 interface PlatformEvents {
     unsolicited: (response: Response) => void;
@@ -148,7 +149,7 @@ export class LutronCasetaLeap
                 break;
             }
             default:
-                this.log.warn(`Accessory ${accessory} was cached but is not supported. Did you downgrade?`);
+                this.log.warn(`Accessory ${util.inspect(accessory)} was cached but is not supported. Did you downgrade?`);
         }
 
         this.accessories.set(accessory.UUID, accessory);
