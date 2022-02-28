@@ -37,7 +37,7 @@ class PluginUiServer extends HomebridgePluginUiServer {
             this.pushEvent('failed', { bridgeid: bridgeid, reason: e.message });
             throw e;
         }
-        this.pushEvent('connected', '032E7E88');
+        this.pushEvent('connected', bridgeid);
     }
 
     async doAssociate({ bridgeid, ipAddr }) {
