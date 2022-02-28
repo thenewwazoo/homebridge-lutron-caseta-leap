@@ -183,6 +183,7 @@ export class LutronCasetaLeap
             const client = new LeapClient(bridgeInfo.ipAddr, LEAP_PORT, these.ca, these.key, these.cert);
             const bridge = new SmartBridge(bridgeInfo.bridgeid.toLowerCase(), client);
             this.bridgeMgr.addBridge(bridge);
+            this.processAllDevices(bridge);
         } else {
             throw new Error('no credentials for bridge ID ' + bridgeInfo.bridgeid);
         }
