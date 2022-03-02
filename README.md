@@ -6,7 +6,7 @@ This is a plugin that interfaces between Homebridge (and HomeKit) and the [Lutro
 
 * [Serena Smart Wood Blinds](https://www.serenashades.com),
 * [Pico Remotes](https://www.lutron.com/en-US/Products/Pages/Components/PicoWirelessController/Models.aspx)
-* [Caseta Occupancy Sensors](https://www.lutron.com/en-US/Pages/Sensors/touchless.aspx)
+* Caseta Occupancy Sensors
 
 Because HomeKit control for dimmers and switches, etc, are natively supported by the Smart Bridge, this plugin doesn't implement them. If you want to help out and add support, please see the [To-do and contributions](#to-do-and-contributions) section at the bottom of this document.
 
