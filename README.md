@@ -6,6 +6,7 @@ This is a plugin that interfaces between Homebridge (and HomeKit) and the [Lutro
 
 * [Serena Smart Wood Blinds](https://www.serenashades.com),
 * [Pico Remotes](https://www.lutron.com/en-US/Products/Pages/Components/PicoWirelessController/Models.aspx)
+* [Caseta Occupancy Sensors](https://www.lutron.com/en-US/Pages/Sensors/touchless.aspx)
 
 Because HomeKit control for dimmers and switches, etc, are natively supported by the Smart Bridge, this plugin doesn't implement them. If you want to help out and add support, please see the [To-do and contributions](#to-do-and-contributions) section at the bottom of this document.
 
@@ -26,6 +27,8 @@ Click "Settings" for this plugin. You should see your bridges listed. I only hav
 Click on "Associate", and then press the button on the back of your Smart Bridge 2 device within 30 seconds. The UI will update, and if all goes well, you will see:
 
 ![view of a single successfully-connected bridge](assets/associated.png)
+
+Click the save button at the bottom, and you're done.
 
 ## User Information
 
