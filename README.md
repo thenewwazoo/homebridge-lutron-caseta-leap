@@ -14,7 +14,7 @@ This plugin makes use of the [lutron-leap-js](https://github.com/thenewwazoo/lut
 
 ## Installation and Setup
 
-Either run `npm -i homebridge-lutron-caseta-leap` in your Homebridge installation directory or install it using [`homebridge-config-ui-x`](https://github.com/oznu/homebridge-config-ui-x#readme).
+This plugin requires [`homebridge-config-ui-x`](https://github.com/oznu/homebridge-config-ui-x#readme) for initial setup. Install the plugin using the UI.
 
 Once that's done, open the configuration screen:
 
