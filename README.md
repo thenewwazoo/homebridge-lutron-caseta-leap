@@ -74,9 +74,7 @@ In order to enable debugging, set the DEBUG environment variable in the Homebrid
 The following items are on my wishlist:
 * Add support for double- and long-presses on Pico remotes
 * Extend the Serena blind support to enable the tilt characteristic directly (in addition to faking lift w/ tilt)
-* Add support for motion sensors (would require hardware donation)
 * Add/validate support for RA2 bridges (would require hardware donation)
-* Add support for authentication key auto-configuration
 
 I welcome contributions! I wrote this to scratch an itch (no Serena wood blind support), but would be fine with additional devices. To add a device:
 * Add a case to `LutronCasetaLeap.configureAccessory` and `handleBridgeDiscovery` for your new device type.
