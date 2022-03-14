@@ -172,7 +172,7 @@ export class LutronCasetaLeap
     // ----- CUSTOM METHODS
 
     private handleBridgeDiscovery(bridgeInfo: BridgeNetInfo) {
-        if (this.bridgeMgr.hasBridge(bridgeInfo.bridgeid)) {
+        if (this.bridgeMgr.hasBridge(bridgeInfo.bridgeid.toLowerCase())) {
             // we've already discovered this bridge, move along
             this.log.info('Bridge', bridgeInfo.bridgeid, 'already known, closing.');
             return;
