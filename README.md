@@ -59,11 +59,19 @@ I'd love to have complete, tested support of all remote types. If you have hardw
 
 Right now, all known Pico remotes are shown in the Home app. This means their functionality is duplicated, in a sense. Configuration in Homekit has no effect on operation with paired accessories, or anything else in the Lutron app. Let me know if you'd like to hide remotes that are paired, as it's possible but not currently enabled.
 
-## Support
+## Support and Troubleshooting
 
 If you need find a bug, need help with this plugin, or have questions, the best way to reach me is via a Github Issue. Please don't be shy about opening one. You can also reach me via the email address in my Github profile.
 
 This plugin doesn't often change, but when I add big features or make big changes, I will occasionally join the [`#lutron-caseta-leap`](https://discord.com/channels/432663330281226270/927991341923852389) channel on the [Homebridge Discord server](https://discord.gg/RcV7fa8).
+
+### My bridge doesn't appear in the configuration UI
+
+Bridge discovery works using mDNS aka Bonjour aka zeroconf. This means that your Homebridge server sends a special message that's sent to every computer on the local network. If your bridge can't hear that packet for some reason, discovery won't work.
+
+Why can't your bridge hear that packet? There are, unfortunately, an infinite number of possible reasons. Some keyword soup that might match something in your network configuration: broadcast relay repeat forwarding.
+
+Sadly, that's all the support I can offer, as the particular problems are impossible to diagnose without access to your network. My best advice is to keep the bridge as close, network-wise, to the Homebridge server as possible. Good luck, and I'm sorry you're having problems.
 
 ## Enabling debugging
 
