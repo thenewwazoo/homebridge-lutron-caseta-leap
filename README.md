@@ -12,7 +12,7 @@ Because HomeKit control for dimmers and switches, etc, are natively supported by
 
 This plugin makes use of the [lutron-leap-js](https://github.com/thenewwazoo/lutron-leap-js) library, which implements the Lutron LEAP protocol, used by the Lutron mobile apps and third-party integrations. It has been tested with the non-Pro and Pro bridges, and may also be able to work with RA2 (but has not been tested).
 
-## Installation and Setup
+## 🏗 Installation and Setup
 
 This plugin requires [`homebridge-config-ui-x`](https://github.com/oznu/homebridge-config-ui-x#readme) for initial setup. Install the plugin using the UI.
 
@@ -30,7 +30,7 @@ Click on "Associate", and then press the button on the back of your Smart Bridge
 
 Click the save button at the bottom, and you're done.
 
-## User Information
+## 🏄 User Information
 
 ### Adding and Removing Devices
 
@@ -59,7 +59,7 @@ I'd love to have complete, tested support of all remote types. If you have hardw
 
 Right now, all known Pico remotes are shown in the Home app. This means their functionality is duplicated, in a sense. Configuration in Homekit has no effect on operation with paired accessories, or anything else in the Lutron app. Let me know if you'd like to hide remotes that are paired, as it's possible but not currently enabled.
 
-## Support and Troubleshooting
+## ⚠️ Support and Troubleshooting
 
 If you need find a bug, need help with this plugin, or have questions, the best way to reach me is via a Github Issue. Please don't be shy about opening one. You can also reach me via the email address in my Github profile.
 
@@ -73,11 +73,11 @@ Why can't your bridge hear that packet? There are, unfortunately, an infinite nu
 
 Sadly, that's all the support I can offer, as the particular problems are impossible to diagnose without access to your network. My best advice is to keep the bridge as close, network-wise, to the Homebridge server as possible. Good luck, and I'm sorry you're having problems.
 
-## Enabling debugging
+## 🪲 Enabling debugging
 
 In order to enable debugging, set the DEBUG environment variable in the Homebridge UI to `leap:*`. This will make this plugin, and its main library `lutron-leap-js`, noisier. Logging at this level is required for diagnosis and new hardware support.
 
-## To-do and contributions
+## 📝 To-do and contributions
 
 The following items are on my wishlist:
 * Add support for double- and long-presses on Pico remotes
@@ -90,7 +90,7 @@ I welcome contributions! I wrote this to scratch an itch (no Serena wood blind s
 * Add relevant methods to the [`SmartBridge`](https://github.com/thenewwazoo/lutron-leap-js/blob/main/src/SmartBridge.ts) class in the `lutron-leap-js` project to control the device. These methods should construct command requests.
 * Add an "unsolicited events" and/or "subscribed event" handler in your new device class to update itself when new information arrives from the bridge, and to update characteristic values.
 
-## Development setup
+## 🛠 Development setup
 
 (rough notes)
 
@@ -102,7 +102,7 @@ I welcome contributions! I wrote this to scratch an itch (no Serena wood blind s
 * `rm ~/.homebridge/accessories/cachedAccessories; DEBUG='leap:*,HAP-NodeJS:Accessory' npm run watch`
 * `npm run lint`
 
-## Legacy Configuration
+## 💨 Legacy Configuration
 
 > :warning: **This only applies if the UI doesn't work for you**: If that's the case, please file a ticket too.
 
