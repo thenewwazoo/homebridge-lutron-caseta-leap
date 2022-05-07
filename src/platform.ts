@@ -138,7 +138,10 @@ export class LutronCasetaLeap
             case 'Pico2Button':
             case 'Pico2ButtonRaiseLower':
             case 'Pico3Button':
-            case 'Pico3ButtonRaiseLower': {
+            case 'Pico3ButtonRaiseLower':
+            case 'Pico4ButtonZone':
+            case 'Pico4ButtonScene':
+            {
                 this.log.info(
                     'Restoring Pico remote',
                     accessory.context.device.FullyQualifiedName.join(' '),
@@ -235,7 +238,10 @@ export class LutronCasetaLeap
             case 'Pico2Button':
             case 'Pico2ButtonRaiseLower':
             case 'Pico3Button':
-            case 'Pico3ButtonRaiseLower': {
+            case 'Pico3ButtonRaiseLower':
+            case 'Pico4ButtonScene':
+            case 'Pico4ButtonZone':
+            {
                 this.log.info('Found a new', d.DeviceType, 'remote', fullName);
 
                 // SIDE EFFECT: this constructor mutates the accessory object
@@ -264,8 +270,6 @@ export class LutronCasetaLeap
             // TODO
             // known devices that are not exposed to homekit, pending support
             case 'Pico4Button':
-            case 'Pico4ButtonScene':
-            case 'Pico4ButtonZone':
             case 'Pico4Button2Group':
             case 'FourGroupRemote': {
                 this.log.info('Device type', d.DeviceType, 'not yet supported, skipping setup');
