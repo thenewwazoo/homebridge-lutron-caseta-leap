@@ -5,10 +5,19 @@ import { ExceptionDetail, OneButtonStatusEvent, Response, SmartBridge } from 'lu
 
 import { inspect } from 'util';
 
-// This maps device types and button numbers to human-readable labels and
+// This maps DeviceType and ButtonNumber to human-readable labels and
 // ServiceLabelIndex values. n.b. the labels are not shown in Apple's Home app,
 // but are shown in other apps. The index value determines the order that
-// buttons are shown in the Home app. They're ordered top-to-bottom here.
+// buttons are shown in the Home app. They're ordered top-to-bottom (as they
+// appear on the physical remote) in this map.
+//
+// [
+//     $DeviceType,
+//     new Map([
+//         [$ButtonNumber, { label: '...', index: ... }],
+//         ...
+//     ]),
+// ]
 const BUTTON_MAP = new Map<string, Map<number, { label: string; index: number }>>([
     [
         'Pico2Button',
@@ -44,13 +53,27 @@ const BUTTON_MAP = new Map<string, Map<number, { label: string; index: number }>
             [4, { label: 'Lower', index: 4 }],
         ]),
     ],
+    [
+        'Pico4ButtonScene',
+        new Map([
+            [1, { label: 'Button 1', index: 1 }],
+            [2, { label: 'Button 2', index: 2 }],
+            [3, { label: 'Button 3', index: 3 }],
+            [4, { label: 'Button 4', index: 4 }],
+        ]),
+    ],
+    [
+        'Pico4ButtonZone',
+        new Map([
+            [1, { label: 'Button 1', index: 1 }],
+            [2, { label: 'Button 2', index: 2 }],
+            [3, { label: 'Button 3', index: 3 }],
+            [4, { label: 'Button 4', index: 4 }],
+        ]),
+    ],
     // TODO
     /*
     ['Pico4Button', new Map([
-    ])],
-    ['Pico4ButtonScene', new Map([
-    ])],
-    ['Pico4ButtonZone', new Map([
     ])],
     ['Pico4Button2Group', new Map([
     ])],
