@@ -77,6 +77,15 @@ Sadly, that's all the support I can offer, as the particular problems are imposs
 
 In order to enable debugging, set the DEBUG environment variable in the Homebridge UI to `leap:*`. This will make this plugin, and its main library `lutron-leap-js`, noisier. Logging at this level is required for diagnosis and new hardware support.
 
+To do this, use the drop-down menu and click on "Homebridge Settings":
+
+![picture of the Homebridge UI, with the settings menu expanded](assets/menu_dropdown.png)
+
+Then, enter `leap:*` in the DEBUG field:
+
+![the Homebridge settings UI, with the DEBUG field filled](assets/debug_set.png)
+
+
 ## 📝 To-do and contributions
 
 The following items are on my wishlist:
