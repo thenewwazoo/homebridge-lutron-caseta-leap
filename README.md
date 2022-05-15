@@ -85,6 +85,10 @@ Then, enter `leap:*` in the DEBUG field:
 
 ![the Homebridge settings UI, with the DEBUG field filled](assets/debug_set.png)
 
+Then, restart Homebridge.
+
+Note that enabling DEBUG logging increases the amount of log information _greatly_. This can mean other informational messages are drowned out. (Un)Fortunately, the log file is limited to 1 megabyte, so forgetting to turn it off won't mean that you fill your hard disk, but I do recommend disabling it after you're done collecting data.
+
 
 ## 📝 To-do and contributions
 
