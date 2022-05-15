@@ -83,7 +83,7 @@ To do this, use the drop-down menu and click on "Homebridge Settings":
 
 Then, enter `leap:*` in the DEBUG field:
 
-![the Homebridge settings UI, with the DEBUG field filled](debug_set.png)
+![the Homebridge settings UI, with the DEBUG field filled](assets/debug_set.png)
 
 
 ## 📝 To-do and contributions
