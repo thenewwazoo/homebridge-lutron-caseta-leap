@@ -1,7 +1,7 @@
 import { Service, PlatformAccessory } from 'homebridge';
 
 import { LutronCasetaLeap } from './platform';
-import { ExceptionDetail, OneButtonStatusEvent, Response, SmartBridge } from 'lutron-leap';
+import { ExceptionDetail, OneButtonStatusEvent, Response, SmartBridge, ButtonDefinition } from 'lutron-leap';
 
 import { inspect } from 'util';
 
@@ -54,6 +54,14 @@ const BUTTON_MAP = new Map<string, Map<number, { label: string; index: number }>
         ]),
     ],
     [
+        'Pico4Button2Group',
+        new Map([
+            [1, { label: 'Group 1 On', index: 1 }],
+            [2, { label: 'Group 1 Off', index: 2 }],
+            [3, { label: 'Group 2 On', index: 3 }],
+            [4, { label: 'Group 2 Off', index: 4 }],
+        ]),
+    ], [
         'Pico4ButtonScene',
         new Map([
             [1, { label: 'Button 1', index: 1 }],
@@ -74,9 +82,7 @@ const BUTTON_MAP = new Map<string, Map<number, { label: string; index: number }>
     // TODO
     /*
     ['Pico4Button', new Map([
-    ])],
-    ['Pico4Button2Group', new Map([
-    ])],
+    ])]
    */
 ]);
 
@@ -120,15 +126,11 @@ export class PicoRemote {
                 throw e;
             }
 
-            if (bgs.length > 1) {
-                throw new Error('Devices with multiple button groups not yet supported. Please file a github issue.');
-            }
-
-            const bg = bgs[0];
-
-            if (bg instanceof ExceptionDetail) {
-                throw new Error('device has been removed');
-            }
+            bgs.forEach(bg => {
+                if (bg instanceof ExceptionDetail) {
+                    throw new Error('device has been removed');
+                }
+            });
 
             // TODO make this behavior optional. a user may want to
             // hide remotes that are already associated with
@@ -139,12 +141,14 @@ export class PicoRemote {
                }
                */
 
-            let buttons;
-            try {
-                buttons = await bridge.getButtonsFromGroup(bg);
-            } catch (e) {
-                this.platform.log.error('Failed to get buttons from button group', bg.href);
-                throw e;
+            let buttons:ButtonDefinition[] = [];
+            for (const bg of bgs) {
+                try {
+                    buttons = buttons.concat(await bridge.getButtonsFromGroup(bg));
+                } catch (e) {
+                    this.platform.log.error('Failed to get buttons from button group', bg.href);
+                    throw e;
+                }
             }
 
             for (const button of buttons) {

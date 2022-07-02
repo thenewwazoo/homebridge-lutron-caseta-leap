@@ -239,6 +239,7 @@ export class LutronCasetaLeap
             case 'Pico2ButtonRaiseLower':
             case 'Pico3Button':
             case 'Pico3ButtonRaiseLower':
+            case 'Pico4Button2Group':
             case 'Pico4ButtonScene':
             case 'Pico4ButtonZone':
             {
@@ -270,7 +271,6 @@ export class LutronCasetaLeap
             // TODO
             // known devices that are not exposed to homekit, pending support
             case 'Pico4Button':
-            case 'Pico4Button2Group':
             case 'FourGroupRemote': {
                 this.log.info('Device type', d.DeviceType, 'not yet supported, skipping setup');
                 return;
