@@ -139,6 +139,7 @@ export class LutronCasetaLeap
             case 'Pico2ButtonRaiseLower':
             case 'Pico3Button':
             case 'Pico3ButtonRaiseLower':
+            case 'Pico4Button2Group':
             case 'Pico4ButtonZone':
             case 'Pico4ButtonScene':
             {
