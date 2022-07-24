@@ -4,7 +4,7 @@
 
 This is a plugin that interfaces between Homebridge (and HomeKit) and the [Lutron Caséta Smart Bridge](https://www.casetawireless.com/products/expansion-kits-and-smart-bridge). Specifically, this adds support for:
 
-* [Serena Smart Wood Blinds](https://www.serenashades.com),
+* [Serena Smart Wood Blinds](https://www.serenashades.com) (optionally),
 * [Pico Remotes](https://www.lutron.com/en-US/Products/Pages/Components/PicoWirelessController/Models.aspx)
 * Caseta Occupancy Sensors
 
@@ -30,6 +30,22 @@ Click on "Associate", and then press the button on the back of your Smart Bridge
 
 Click the save button at the bottom, and you're done.
 
+### Options
+
+#### Exclude Picos...
+
+By default, all known Pico remotes are shown in the Home app. This means their functionality is duplicated, in a sense. Configuration in Homekit has no effect on operation with paired accessories, or anything else in the Lutron app. With no further action, you can use them (HomeKit and the Lutron App) both simultaneously.
+
+*If you want to only show Picos that do not have associations* in the Lutron app, check the configuration box for "Exclude Pico remotes...". This will hide them from HomeKit. Please note that hiding them is not a destructive operation, and you can un-hide them in the future and (I _think..._) you won't lose their setup when they come back.
+
+#### Disable support for Serena...
+
+When this plugin was written, Lutron did not support the Serena Tilt-Only Wood Blinds in HomeKit. They have since added that support. If you do not disable support in the plugin, your blinds will show up twice. *This is the default behavior* in order not to break existing configurations, but you _probably_ want to turn on this option.
+
+#### Double- and long-press speed
+
+This lets you set the speed with which you must click buttons in order to trigger a double- or a long-press of a button. The default should be comfortable for most modern computer users. My hope is that slow and fast are better for some users. If you find they do not work for you, please let me know!
+
 ## 🏄 User Information
 
 ### Adding and Removing Devices
@@ -54,10 +70,6 @@ I don't own one of every remote type, so I've had to make guesses about the othe
 * [3-Button with raise/lower](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-3BRL&Section=Documents)
 
 I'd love to have complete, tested support of all remote types. If you have hardware that is partially- or un-supported and, adding support is fast and easy. I would also be happy to add support for hardware that is provided to me.
-
-### Homekit and Lutron App collision
-
-Right now, all known Pico remotes are shown in the Home app. This means their functionality is duplicated, in a sense. Configuration in Homekit has no effect on operation with paired accessories, or anything else in the Lutron app. Let me know if you'd like to hide remotes that are paired, as it's possible but not currently enabled.
 
 ## ⚠️ Support and Troubleshooting
 

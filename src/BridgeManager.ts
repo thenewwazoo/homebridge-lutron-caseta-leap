@@ -73,7 +73,7 @@ export class BridgeManager {
     }
 
     public hasBridge(bridgeID: string) {
-        this.platform.log.debug('yeah, I\'ve got', bridgeID, 'who wants to know?');
+        this.platform.log.debug(`seeking bridge ${bridgeID}`);
         return this.bridges.has(bridgeID);
     }
 }

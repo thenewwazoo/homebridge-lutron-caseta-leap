@@ -12,62 +12,109 @@
         "default": "Lutron",
         "required": true
       },
-        "secrets": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "bridgeid": { "type": "string" },
-                    "ca": { "type": "string" },
-                    "key": { "type": "string" },
-                    "cert": { "type": "string" }
-                },
-                "required": ["ca", "cert", "key"]
-            }
+      "options": {
+        "type": "object",
+        "properties": {
+          "filterPico": {
+            "type": "boolean",
+            "title": "Exclude Pico remotes that are associated with devices directly or in the Lutron app"
+          },
+          "filterBlinds": {
+            "type": "boolean",
+            "title": "Exclude Serena wood blinds from this plugin"
+          },
+          "clickSpeed": {
+            "type": "string",
+            "title": "Double- and long-press speed",
+            "oneOf": [
+              { "title": "Fast", "enum": ["fast"] },
+              { "title": "Medium (default)", "enum": ["medium"] },
+              { "title": "Slow", "enum": ["slow"] }
+            ]
+          }
+
         }
+      },
+      "secrets": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "bridgeid": { "type": "string" },
+            "ca": { "type": "string" },
+            "key": { "type": "string" },
+            "cert": { "type": "string" }
+          },
+          "required": ["ca", "cert", "key"]
+        }
+      }
     }
   },
   "layout": [
-      {"key": "secrets",
+    {"key": "options",
+      "type": "div",
+      "displayFlex": true,
+      "items": [
+        {
+          "key": "options.filterPico",
+          "notitle": false,
+          "type": "boolean",
+          "flex": "1 1 150px"
+        },
+        {
+          "key": "options.filterBlinds",
+          "notitle": false,
+          "type": "boolean",
+          "flex": "1 1 150px"
+        },
+        {
+          "key": "options.clickSpeed",
+          "notitle": false,
+          "type": "string",
+          "flex": "1 1 150px"
+        }
+      ]
+    },
+    {"key": "secrets",
       "type": "array",
       "listItems": 1,
       "items": [ {
-          "type": "div",
-          "displayFlex": true,
-          "items": [
-              {
-                  "key": "secrets[].bridgeid",
-                  "flex": "1 1 50px",
-                  "notitle": false,
-                  "title": "Bridge ID Number (hex of serial number)",
-                  "placeholder": "Bridge ID",
-                  "type": "string"
-              },
-              {
-                  "key": "secrets[].ca",
-                  "flex": "200px",
-                  "title": "CA certificate (caseta-bridge.crt)",
-                  "placeholder": "-----BEGIN CERTIFICATE-----...",
-                  "type": "textarea"
-              },
-              {
-                  "key": "secrets[].key",
-                  "flex": "200px",
-                  "title": "Private key (caseta.key)",
-                  "placeholder": "-----BEGIN PRIVATE KEY-----...",
-                  "type": "textarea"
-              },
-              {
-                  "key": "secrets[].cert",
-                  "flex": "200px",
-                  "title": "Signed certificate (caseta.crt)",
-                  "placeholder": "-----BEGIN CERTIFICATE-----...",
-                  "type": "textarea"
-              }
-            ]
+        "type": "div",
+        "displayFlex": true,
+        "items": [
+          {
+            "key": "secrets[].bridgeid",
+            "flex": "1 1 50px",
+            "notitle": false,
+            "title": "Bridge ID Number (hex of serial number)",
+            "placeholder": "Bridge ID",
+            "type": "string"
+          },
+          {
+            "key": "secrets[].ca",
+            "flex": "200px",
+            "title": "CA certificate (caseta-bridge.crt)",
+            "placeholder": "-----BEGIN CERTIFICATE-----...",
+            "type": "textarea"
+          },
+          {
+            "key": "secrets[].key",
+            "flex": "200px",
+            "title": "Private key (caseta.key)",
+            "placeholder": "-----BEGIN PRIVATE KEY-----...",
+            "type": "textarea"
+          },
+          {
+            "key": "secrets[].cert",
+            "flex": "200px",
+            "title": "Signed certificate (caseta.crt)",
+            "placeholder": "-----BEGIN CERTIFICATE-----...",
+            "type": "textarea"
+          }
+        ]
       }
       ]
-      }
+    }
   ]
-}
 
+}
