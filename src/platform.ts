@@ -30,6 +30,12 @@ interface PlatformEvents {
 }
 
 // see config.schema.json
+export interface GlobalOptions {
+    filterPico: boolean;
+    filterBlinds: boolean;
+    clickSpeed: 'fast' | 'medium' | 'slow';
+}
+
 interface BridgeAuthEntry {
     bridgeid: string;
     ca: string;
@@ -39,9 +45,11 @@ interface BridgeAuthEntry {
 
 export class LutronCasetaLeap
     extends (EventEmitter as new () => TypedEmitter<PlatformEvents>)
-    implements DynamicPlatformPlugin {
+    implements DynamicPlatformPlugin
+{
     private readonly accessories: Map<string, PlatformAccessory> = new Map();
     private finder: BridgeFinder | null = null;
+    private options: GlobalOptions;
     private secrets: Map<string, BridgeAuthEntry>;
     private bridgeMgr;
 
@@ -54,6 +62,7 @@ export class LutronCasetaLeap
 
         process.on('warning', (e) => this.log.warn(`Got ${e.name} process warning: ${e.message}:\n${e.stack}`));
 
+        this.options = this.optionsFromConfig(config);
         this.secrets = this.secretsFromConfig(config);
         if (this.secrets.size === 0) {
             log.warn('No bridge auth configured. Retiring.');
@@ -101,6 +110,17 @@ export class LutronCasetaLeap
         log.info('LutronCasetaLeap plugin finished early initialization');
     }
 
+    optionsFromConfig(config: PlatformConfig): GlobalOptions {
+        return Object.assign(
+            {
+                filterPico: false,
+                filterBlinds: false,
+                clickSpeed: 'medium',
+            },
+            config.options,
+        );
+    }
+
     secretsFromConfig(config: PlatformConfig): Map<string, BridgeAuthEntry> {
         const out = new Map();
         for (const entry of config.secrets as Array<BridgeAuthEntry>) {
@@ -124,14 +144,21 @@ export class LutronCasetaLeap
         // the bridge ID, which we previously saved in the accessory context.
         const bridge = this.bridgeMgr.getBridge(accessory.context.bridgeID);
 
+        const fullName = accessory.context.device.FullyQualifiedName.join(' ');
         this.log.info(
             `Restoring cached ${accessory.context.device.DeviceType} ${accessory.UUID} on bridge ${accessory.context.bridgeID}`,
         );
 
         switch (accessory.context.device.DeviceType) {
             case 'SerenaTiltOnlyWoodBlind': {
-                this.log.info('Restoring blinds', accessory.context.device.FullyQualifiedName.join(' '));
+                if (this.options.filterBlinds) {
+                    this.log.warn(`Serena wood blinds support disabled. Skipping ${fullName}`);
+                    return;
+                }
+
+                this.log.info(`Restoring blinds ${fullName}`);
                 new SerenaTiltOnlyWoodBlinds(this, accessory, bridge);
+
                 break;
             }
 
@@ -141,25 +168,15 @@ export class LutronCasetaLeap
             case 'Pico3ButtonRaiseLower':
             case 'Pico4Button2Group':
             case 'Pico4ButtonZone':
-            case 'Pico4ButtonScene':
-            {
-                this.log.info(
-                    'Restoring Pico remote',
-                    accessory.context.device.FullyQualifiedName.join(' '),
-                    'on bridge',
-                    accessory.context.bridgeID,
-                );
-                new PicoRemote(this, accessory, bridge);
+            case 'Pico4ButtonScene': {
+                this.log.info(`Restoring Pico remote ${fullName} on bridge ${accessory.context.bridgeID}`);
+
+                new PicoRemote(this, accessory, bridge, this.options);
                 break;
             }
 
             case 'RPSOccupancySensor': {
-                this.log.info(
-                    'Restoring occupancy sensor',
-                    accessory.context.device.FullyQualifiedName.join(' '),
-                    'on bridge',
-                    accessory.context.bridgeID,
-                );
+                this.log.info(`Restoring occupancy sensor ${fullName} on bridge ${accessory.context.bridgeID}`);
 
                 const sensor = new OccupancySensor(this, accessory, bridge);
                 sensor.initialize().then(() => this.log.debug('Finished setting up occupancy sensor'));
@@ -167,7 +184,9 @@ export class LutronCasetaLeap
             }
 
             default:
-                this.log.warn(`Accessory ${util.inspect(accessory)} was cached but is not supported. Did you downgrade?`);
+                this.log.warn(
+                    `Accessory ${util.inspect(accessory)} was cached but is not supported. Did you downgrade?`,
+                );
         }
 
         this.accessories.set(accessory.UUID, accessory);
@@ -217,7 +236,7 @@ export class LutronCasetaLeap
         const uuid = this.api.hap.uuid.generate(d.SerialNumber.toString());
 
         if (this.accessories.has(uuid)) {
-            this.log.info('Accessory', d.DeviceType, uuid, fullName, 'already set up. Skipping.');
+            this.log.info(`Accessory ${d.DeviceType} ${uuid} ${fullName} already set up. Skipping.`);
             return;
         }
 
@@ -229,6 +248,11 @@ export class LutronCasetaLeap
         switch (d.DeviceType) {
             case 'SerenaTiltOnlyWoodBlind': {
                 this.log.info('Found a new Serena blind:', fullName);
+
+                if (this.options.filterBlinds) {
+                    this.log.warn(`Serena wood blinds support disabled. Skipping ${fullName}`);
+                    return;
+                }
 
                 // SIDE EFFECT: this constructor mutates the accessory object
                 new SerenaTiltOnlyWoodBlinds(this, accessory, this.bridgeMgr.getBridge(bridge.bridgeID));
@@ -242,12 +266,11 @@ export class LutronCasetaLeap
             case 'Pico3ButtonRaiseLower':
             case 'Pico4Button2Group':
             case 'Pico4ButtonScene':
-            case 'Pico4ButtonZone':
-            {
-                this.log.info('Found a new', d.DeviceType, 'remote', fullName);
+            case 'Pico4ButtonZone': {
+                this.log.info(`Found a new ${d.DeviceType} remote ${fullName}`);
 
                 // SIDE EFFECT: this constructor mutates the accessory object
-                new PicoRemote(this, accessory, this.bridgeMgr.getBridge(bridge.bridgeID));
+                new PicoRemote(this, accessory, this.bridgeMgr.getBridge(bridge.bridgeID), this.options);
 
                 break;
             }
@@ -265,7 +288,7 @@ export class LutronCasetaLeap
             case 'WallSwitch':
             case 'WallDimmer':
             case 'CasetaFanSpeedController': {
-                this.log.info('Device type', d.DeviceType, 'supported natively, skipping setup');
+                this.log.info(`Device type ${d.DeviceType} supported natively, skipping setup`);
                 return;
             }
 
@@ -273,13 +296,21 @@ export class LutronCasetaLeap
             // known devices that are not exposed to homekit, pending support
             case 'Pico4Button':
             case 'FourGroupRemote': {
-                this.log.info('Device type', d.DeviceType, 'not yet supported, skipping setup');
+                this.log.info(
+                    'Device type',
+                    d.DeviceType,
+                    'not yet supported, skipping setup. Please file a request ticket.',
+                );
                 return;
             }
 
             // any device we don't know about yet
             default:
-                this.log.info('Device type', d.DeviceType, 'not recognized, skipping setup');
+                this.log.info(
+                    'Device type',
+                    d.DeviceType,
+                    'not recognized, skipping setup. Please file a ticket to include information about it',
+                );
                 return;
         }
 

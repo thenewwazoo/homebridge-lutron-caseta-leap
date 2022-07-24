@@ -1,6 +1,7 @@
 import { Service, PlatformAccessory } from 'homebridge';
 
-import { LutronCasetaLeap } from './platform';
+import { GlobalOptions, LutronCasetaLeap } from './platform';
+import { ButtonTracker } from './ButtonState';
 import { ExceptionDetail, OneButtonStatusEvent, Response, SmartBridge, ButtonDefinition } from 'lutron-leap';
 
 import { inspect } from 'util';
@@ -61,7 +62,8 @@ const BUTTON_MAP = new Map<string, Map<number, { label: string; index: number }>
             [3, { label: 'Group 2 On', index: 3 }],
             [4, { label: 'Group 2 Off', index: 4 }],
         ]),
-    ], [
+    ],
+    [
         'Pico4ButtonScene',
         new Map([
             [1, { label: 'Button 1', index: 1 }],
@@ -88,11 +90,13 @@ const BUTTON_MAP = new Map<string, Map<number, { label: string; index: number }>
 
 export class PicoRemote {
     private services: Map<string, Service> = new Map();
+    private timers: Map<string, ButtonTracker> = new Map();
 
     constructor(
         private readonly platform: LutronCasetaLeap,
         private readonly accessory: PlatformAccessory,
         private readonly bridge: Promise<SmartBridge>,
+        options: GlobalOptions,
     ) {
         const fullName = accessory.context.device.FullyQualifiedName.join(' ');
 
@@ -118,30 +122,26 @@ export class PicoRemote {
 
             let bgs;
             try {
-                // TODO some remotes return multiple button groups. make this support them.
-                // see https://github.com/gurumitts/pylutron-caseta/pull/84
                 bgs = await bridge.getButtonGroupsFromDevice(this.accessory.context.device);
             } catch (e) {
                 this.platform.log.error('Failed to get button group(s) belonging to', fullName, e);
                 throw e;
             }
 
-            bgs.forEach(bg => {
+            // if there are any buttongroups that are already associated in the
+            // lutron app, and we've been told to skip them, return early.
+            if (bgs.some((bg) => bg.AffectedZones !== undefined) && options.filterPico) {
+                this.platform.log.warn(`Skipping ${fullName} because it is already associated`);
+                return;
+            }
+
+            bgs.forEach((bg) => {
                 if (bg instanceof ExceptionDetail) {
                     throw new Error('device has been removed');
                 }
             });
 
-            // TODO make this behavior optional. a user may want to
-            // hide remotes that are already associated with
-            // devices
-            /*
-               if (bg.AffectedZones !== undefined) {
-               return;
-               }
-               */
-
-            let buttons:ButtonDefinition[] = [];
+            let buttons: ButtonDefinition[] = [];
             for (const bg of bgs) {
                 try {
                     buttons = buttons.concat(await bridge.getButtonsFromGroup(bg));
@@ -186,12 +186,31 @@ export class PicoRemote {
                 service.setCharacteristic(this.platform.api.hap.Characteristic.Name, alias.label);
                 service.setCharacteristic(this.platform.api.hap.Characteristic.ServiceLabelIndex, alias.index);
 
-                // TODO add timers to track double- and long-presses, remove this line
                 service
                     .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
-                    .setProps({ maxValue: 0 });
+                    .setProps({ maxValue: 2 });
 
                 this.services.set(button.href, service);
+                this.timers.set(
+                    button.href,
+                    new ButtonTracker(
+                        () =>
+                            service
+                                .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
+                                .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS),
+                        () =>
+                            service
+                                .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
+                                .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS),
+                        () =>
+                            service
+                                .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
+                                .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS),
+                        this.platform.log,
+                        button.href,
+                        options.clickSpeed,
+                    ),
+                );
 
                 this.platform.log.debug(`subscribing to ${button.href} events`);
                 bridge.subscribeToButton(button, this.handleEvent.bind(this));
@@ -207,31 +226,11 @@ export class PicoRemote {
 
     handleEvent(response: Response): void {
         const evt = (response.Body! as OneButtonStatusEvent).ButtonStatus;
-        const svc = this.services.get(evt.Button.href);
-        this.platform.log.debug('handling event from button ', evt.Button.href);
-        if (svc !== undefined) {
-            if (evt.ButtonEvent.EventType === 'Release') {
-                this.platform.log.info(
-                    'Button ',
-                    evt.Button.href,
-                    'on Pico remote',
-                    this.accessory.context.device.FullyQualifiedName.join(' '),
-                    'was released; notifying Homekit',
-                );
-                svc.getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent).updateValue(
-                    this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS,
-                );
-            } else {
-                this.platform.log.debug('button ', evt.Button.href, ' was ', evt.ButtonEvent.EventType);
-            }
-        } else {
-            this.platform.log.warn(
-                'Pico remote',
-                this.accessory.context.device.FullyQualifiedName.join(' '),
-                'got an event from unknown button',
-                evt.Button.href,
-            );
-        }
+        const fullName = this.accessory.context.device.FullyQualifiedName.join(' ');
+        this.platform.log.info(
+            `Button ${evt.Button.href} on Pico remote ${fullName} got action ${evt.ButtonEvent.EventType}`,
+        );
+        this.timers.get(evt.Button.href)!.update(evt.ButtonEvent.EventType);
     }
 
     handleUnsolicited(response: Response): void {
