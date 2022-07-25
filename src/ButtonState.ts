@@ -32,8 +32,8 @@ export class ButtonTracker {
 
     constructor(
         private shortPressCB: () => void,
-        private longPressCB: () => void,
         private doublePressCB: () => void,
+        private longPressCB: () => void,
         private log: Logging,
         private href: string,
         clickSpeed?: string,
