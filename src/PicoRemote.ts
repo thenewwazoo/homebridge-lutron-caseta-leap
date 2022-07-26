@@ -19,66 +19,66 @@ import { inspect } from 'util';
 //         ...
 //     ]),
 // ]
-const BUTTON_MAP = new Map<string, Map<number, { label: string; index: number }>>([
+const BUTTON_MAP = new Map<string, Map<number, { label: string; index: number; isUpDown: boolean }>>([
     [
         'Pico2Button',
         new Map([
-            [0, { label: 'On', index: 1 }],
-            [2, { label: 'Off', index: 2 }],
+            [0, { label: 'On', index: 1, isUpDown: false }],
+            [2, { label: 'Off', index: 2, isUpDown: false }],
         ]),
     ],
     [
         'Pico2ButtonRaiseLower',
         new Map([
-            [0, { label: 'On', index: 1 }],
-            [2, { label: 'Off', index: 4 }],
-            [3, { label: 'Raise', index: 2 }],
-            [4, { label: 'Lower', index: 3 }],
+            [0, { label: 'On', index: 1, isUpDown: false }],
+            [2, { label: 'Off', index: 4, isUpDown: false }],
+            [3, { label: 'Raise', index: 2, isUpDown: true }],
+            [4, { label: 'Lower', index: 3, isUpDown: true }],
         ]),
     ],
     [
         'Pico3Button',
         new Map([
-            [0, { label: 'On', index: 1 }],
-            [1, { label: 'Center', index: 2 }],
-            [2, { label: 'Off', index: 3 }],
+            [0, { label: 'On', index: 1, isUpDown: false }],
+            [1, { label: 'Center', index: 2, isUpDown: false }],
+            [2, { label: 'Off', index: 3, isUpDown: false }],
         ]),
     ],
     [
         'Pico3ButtonRaiseLower',
         new Map([
-            [0, { label: 'On', index: 1 }],
-            [1, { label: 'Center', index: 3 }],
-            [2, { label: 'Off', index: 5 }],
-            [3, { label: 'Raise', index: 2 }],
-            [4, { label: 'Lower', index: 4 }],
+            [0, { label: 'On', index: 1, isUpDown: false }],
+            [1, { label: 'Center', index: 3, isUpDown: false }],
+            [2, { label: 'Off', index: 5, isUpDown: false }],
+            [3, { label: 'Raise', index: 2, isUpDown: true }],
+            [4, { label: 'Lower', index: 4, isUpDown: true }],
         ]),
     ],
     [
         'Pico4Button2Group',
         new Map([
-            [1, { label: 'Group 1 On', index: 1 }],
-            [2, { label: 'Group 1 Off', index: 2 }],
-            [3, { label: 'Group 2 On', index: 3 }],
-            [4, { label: 'Group 2 Off', index: 4 }],
+            [1, { label: 'Group 1 On', index: 1, isUpDown: false }],
+            [2, { label: 'Group 1 Off', index: 2, isUpDown: false }],
+            [3, { label: 'Group 2 On', index: 3, isUpDown: false }],
+            [4, { label: 'Group 2 Off', index: 4, isUpDown: false }],
         ]),
     ],
     [
         'Pico4ButtonScene',
         new Map([
-            [1, { label: 'Button 1', index: 1 }],
-            [2, { label: 'Button 2', index: 2 }],
-            [3, { label: 'Button 3', index: 3 }],
-            [4, { label: 'Button 4', index: 4 }],
+            [1, { label: 'Button 1', index: 1, isUpDown: false }],
+            [2, { label: 'Button 2', index: 2, isUpDown: false }],
+            [3, { label: 'Button 3', index: 3, isUpDown: false }],
+            [4, { label: 'Button 4', index: 4, isUpDown: false }],
         ]),
     ],
     [
         'Pico4ButtonZone',
         new Map([
-            [1, { label: 'Button 1', index: 1 }],
-            [2, { label: 'Button 2', index: 2 }],
-            [3, { label: 'Button 3', index: 3 }],
-            [4, { label: 'Button 4', index: 4 }],
+            [1, { label: 'Button 1', index: 1, isUpDown: false }],
+            [2, { label: 'Button 2', index: 2, isUpDown: false }],
+            [3, { label: 'Button 3', index: 3, isUpDown: false }],
+            [4, { label: 'Button 4', index: 4, isUpDown: false }],
         ]),
     ],
     // TODO
@@ -208,7 +208,9 @@ export class PicoRemote {
                                 .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS),
                         this.platform.log,
                         button.href,
-                        options.clickSpeed,
+                        options.clickSpeedDouble,
+                        options.clickSpeedLong,
+                        alias.isUpDown,
                     ),
                 );
 

@@ -1,35 +1,46 @@
 <div class="card card-body text-center">
     <p class="h2 card-title">Lutron Device Configuration</p>
-    <div id="options" class="card mx-auto my-2">
-        <div class="card-body">
-            <h4 class="card-title">Global Options</h4>
-            <form id='optionsForm'>
-                <div class="card-body text-muted form-inline">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="" id="filterPicoChk"/>
-                        <label class="form-check-label" for="filterPicoChk">
-                            Exclude Pico remotes that are associated in the Lutron app
-                        </label>
-                        <br/>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="" id="filterBlindsChk"/>
-                        <label class="form-check-label" for="filterBlindsChk">
-                            Disable support for Serena wood blinds in this plugin
-                        </label>
-                        <br/>
-                    </div>
-                    <div class="form-group">
-                        <select class="form-control form-control-sm" id="clickSpeedSelect">
-                            <option selected>Double- and long-press speed</option>
-                            <option value="fast">Fast</option>
-                            <option value="medium">Medium (default)</option>
-                            <option value="slow">Slow</option>
-                        </select>
-                    </div>
+    <div id="options" class="card-body my-3 w-75 mx-auto">
+
+        <h4 class="card-title">Global Options</h4>
+        <form id='optionsForm' class="form-horizontal">
+
+                <div class="form-check row py-sm-3 mb-0">
+                    <input class="form-check-input col-sm-1" type="checkbox" value="" id="filterPicoChk"/>
+                    <label class="form-check-label col-sm-11 text-left" for="filterPicoChk">
+                        Exclude Pico remotes that are associated in the Lutron app
+                    </label>
+                    <br/>
                 </div>
-            </form>
-        </div>
+
+                <div class="form-check row py-sm-3 mb-0">
+                    <input class="form-check-input col-sm-1" type="checkbox" value="" id="filterBlindsChk"/>
+                    <label class="form-check-label col-sm-11 text-left" for="filterBlindsChk">
+                        Disable support for Serena wood blinds in this plugin
+                    </label>
+                    <br/>
+                </div>
+
+                <div class="form-group row py-sm-3 mb-0">
+                    <label for='clickSpeedLongSelect' class='col-sm-5 col-form-label'>Long press speed</label>
+                    <select class="form-control-sm custom-select col-sm-7" id="clickSpeedLongSelect">
+                        <option value="quick">Quick</option>
+                        <option selected value="default">Default</option>
+                        <option value="relaxed">Relaxed</option>
+                    </select>
+                </div>
+
+                <div class="form-group row py-sm-3 mb-0">
+                    <label for='clickSpeedDoubleSelect' class='col-sm-5 col-form-label'>Double press speed</label>
+                    <select class="form-control-sm custom-select col-sm-7" id="clickSpeedDoubleSelect">
+                        <option value="quick">Quick</option>
+                        <option value="default" selected>Default</option>
+                        <option value="relaxed">Relaxed</option>
+                    </select>
+                </div>
+
+        </form>
+
     </div>
     <div id="bridges">
         <div class="card my-2" id="searching">Searching for bridges...</div>
@@ -43,7 +54,7 @@
     function bootstrapConfig(pluginConfig) {
         if (pluginConfig.length === 0) {
             console.log("no configuration detected. bootstrapping.");
-            pluginConfig = [{name: "Lutron", platform: "LutronCasetaLeap", options: { filterPico: false, filterBlinds: false, clickSpeed: "medium"}, secrets: []}];
+            pluginConfig = [{name: "Lutron", platform: "LutronCasetaLeap", options: { filterPico: false, filterBlinds: false, clickSpeedDouble: "default", clickSpeedLong: "default"}, secrets: []}];
         }
         if (pluginConfig[0].secrets === undefined) {
             console.log("configuration with no secrets. bootstrapping.");
@@ -54,14 +65,12 @@
             pluginConfig[0].options = {
                 filterPico: false,
                 filterBlinds: false,
-                clickSpeed: "medium",
+                clickSpeedDouble: "default",
+                clickSpeedLong: "default",
             };
         }
         return pluginConfig;
     }
-
-    const optElem = document.getElementById('options');
-    optElem.style.width = '36rem';
 
     document.getElementById('schemapopbtn').addEventListener('click', () => {
         homebridge.getPluginConfig().then((pluginConfig) => {
@@ -88,14 +97,16 @@
 
         document.querySelector('#filterPicoChk').value = pluginConfig[0].options.filterPico;
         document.querySelector('#filterBlindsChk').value = pluginConfig[0].options.filterBlinds;
-        document.querySelector('#clickSpeedSelect').value = pluginConfig[0].options.clickSpeed;
+        document.querySelector('#clickSpeedLongSelect').value = pluginConfig[0].options.clickSpeedLong;
+        document.querySelector('#clickSpeedDoubleSelect').value = pluginConfig[0].options.clickSpeedDouble;
 
         document.getElementById('optionsForm').addEventListener('input', () => {
             console.log("options clicked");
             pluginConfig = bootstrapConfig(pluginConfig);
             pluginConfig[0].options.filterPico = document.querySelector('#filterPicoChk').checked;
             pluginConfig[0].options.filterBlinds = document.querySelector('#filterBlindsChk').checked;
-            pluginConfig[0].options.clickSpeed = document.querySelector('#clickSpeedSelect').value;
+            pluginConfig[0].options.clickSpeedLong = document.querySelector('#clickSpeedLongSelect').value;
+            pluginConfig[0].options.clickSpeedDouble = document.querySelector('#clickSpeedDoubleSelect').value;
             console.log(pluginConfig[0].options);
             homebridge.updatePluginConfig(pluginConfig);
         });
