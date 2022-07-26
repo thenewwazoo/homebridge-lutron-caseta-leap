@@ -33,7 +33,8 @@ interface PlatformEvents {
 export interface GlobalOptions {
     filterPico: boolean;
     filterBlinds: boolean;
-    clickSpeed: 'fast' | 'medium' | 'slow';
+    clickSpeedLong: 'quick' | 'default' | 'relaxed';
+    clickSpeedDouble: 'quick' | 'default' | 'relaxed';
 }
 
 interface BridgeAuthEntry {
@@ -114,7 +115,8 @@ export class LutronCasetaLeap
             {
                 filterPico: false,
                 filterBlinds: false,
-                clickSpeed: 'medium',
+                clickSpeedDouble: 'default',
+                clickSpeedLong: 'default',
             },
             config.options,
         );
