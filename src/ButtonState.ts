@@ -15,6 +15,7 @@ const DOUBLE_PRESS_DWELL_MS = new Map<string, number>([
     ['quick', 300],
     ['default', 300],
     ['relaxed', 450],
+    ['disabled', 0],
 ]);
 
 // the "long press timeout" is the amount of time you must hold the button down
@@ -24,6 +25,7 @@ const LONG_PRESS_TIMEOUT_MS = new Map<string, number>([
     ['quick', 300],
     ['default', 350],
     ['relaxed', 750],
+    ['disabled', 0],
 ]);
 
 // Up- and down-buttons on Picos (eg. PJ2-3BRL and PJ2-2BRL) appear to be
@@ -60,8 +62,12 @@ const UP_DOWN_BTN_DELAY_MS = 250;
 export class ButtonTracker {
     private timer: ReturnType<typeof setTimeout> | null;
     private state: ButtonState = ButtonState.IDLE;
-    private longPressTimeout: number;
-    private doublePressTimeout: number;
+
+    private longPressTimeout?: number;
+    private longPressDisabled = false;
+
+    private doublePressTimeout?: number;
+    private doublePressDisabled = false;
 
     constructor(
         private shortPressCB: () => void,
@@ -69,32 +75,37 @@ export class ButtonTracker {
         private longPressCB: () => void,
         private log: Logging,
         private href: string,
-        clickSpeedDbl?: string,
-        clickSpeedLong?: string,
-        isUpDownButton?: boolean,
+        clickSpeedDouble = 'default',
+        clickSpeedLong = 'default',
+        isUpDownButton = false,
     ) {
-        log.debug(`btrk ${this.href} created speed ${clickSpeedDbl} dbl ${clickSpeedLong} long`);
+        log.debug(`btrk ${this.href} created speed ${clickSpeedDouble} dbl ${clickSpeedLong} long`);
 
         this.timer = null;
 
-        if (clickSpeedDbl === undefined) {
-            clickSpeedDbl = 'default';
+        if (clickSpeedLong === 'disabled') {
+            this.longPressDisabled = true;
         }
 
-        if (clickSpeedLong === undefined) {
-            clickSpeedLong = 'default';
+        if (clickSpeedDouble === 'disabled') {
+            this.doublePressDisabled = true;
         }
 
-        if (!DOUBLE_PRESS_DWELL_MS.has(clickSpeedDbl)) {
-            throw new Error(`Could not get dbl timing for speed ${clickSpeedDbl}`);
+        if (!DOUBLE_PRESS_DWELL_MS.has(clickSpeedDouble)) {
+            throw new Error(`Could not get dbl timing for speed ${clickSpeedDouble}`);
         }
-        if ( !LONG_PRESS_TIMEOUT_MS.has(clickSpeedLong)) {
+
+        if (!LONG_PRESS_TIMEOUT_MS.has(clickSpeedLong)) {
             throw new Error(`Could not get long timing for speed ${clickSpeedLong}`);
         }
 
         this.longPressTimeout = LONG_PRESS_TIMEOUT_MS.get(clickSpeedLong)!;
-        this.doublePressTimeout =
-            DOUBLE_PRESS_DWELL_MS.get(clickSpeedDbl)! + (isUpDownButton ? UP_DOWN_BTN_DELAY_MS : 0);
+
+        this.doublePressTimeout = DOUBLE_PRESS_DWELL_MS.get(clickSpeedDouble)!;
+        if (isUpDownButton && !this.doublePressDisabled) {
+            this.doublePressTimeout += UP_DOWN_BTN_DELAY_MS;
+        }
+
     }
 
     reset() {
@@ -109,9 +120,20 @@ export class ButtonTracker {
     public update(action: string) {
         this.log.debug(`btrk ${this.href} got event ${action} in state ${this.state}`);
 
+        // TODO this state machine is ill-formed, and relies on `this.timer`
+        // implicitly being included in state decisions. refactor so the timer
+        // updates the state variable. this will also make the `disabled`
+        // options clearer.
+
         const longPressTimeoutHandler = () => {
             this.log.debug(`btrk ${this.href} long press timeout`);
             this.reset();
+
+            if (this.longPressDisabled) {
+                // unreachable
+                return;
+            }
+
             this.log.info(`button ${this.href} got a long press`);
             this.longPressCB();
         };
@@ -127,7 +149,11 @@ export class ButtonTracker {
             case ButtonState.IDLE: {
                 if (action === 'Press') {
                     this.state = ButtonState.DOWN;
-                    this.timer = setTimeout(longPressTimeoutHandler, this.longPressTimeout);
+                    if (this.longPressDisabled) {
+                        this.log.info(`button ${this.href} long press disabled. suppressing.`);
+                    } else {
+                        this.timer = setTimeout(longPressTimeoutHandler, this.longPressTimeout);
+                    }
                     this.log.debug(`btrk ${this.href} now in state DOWN`);
                 } else {
                     // no-op
@@ -161,6 +187,12 @@ export class ButtonTracker {
                         // the button was pressed again before the timer fired
                         this.log.debug(`btrk ${this.href} pressed before double-tap expiry`);
                         this.reset();
+
+                        if (this.doublePressDisabled) {
+                            this.log.info(`button ${this.href} double press disabled. suppressing.`);
+                            return;
+                        }
+
                         this.log.info(`button ${this.href} got a double press`);
                         this.doublePressCB();
                     } else {
