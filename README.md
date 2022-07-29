@@ -8,7 +8,7 @@ This is a plugin that interfaces between Homebridge (and HomeKit) and the [Lutro
 * [Pico Remotes](https://www.lutron.com/en-US/Products/Pages/Components/PicoWirelessController/Models.aspx)
 * Caseta Occupancy Sensors
 
-Because HomeKit control for dimmers and switches, etc, are natively supported by the Smart Bridge, this plugin doesn't implement them. If you want to help out and add support, please see the [To-do and contributions](#to-do-and-contributions) section at the bottom of this document.
+Because HomeKit control for dimmers and switches, etc, are natively supported by the Smart Bridge, this plugin doesn't implement them. If you want to help out and add support, please see the [To-do and contributions](#to-do-and-contributions) section at the bottom of this document. Serena Smart Wood Blinds support in this plugin can be disabled.
 
 This plugin makes use of the [lutron-leap-js](https://github.com/thenewwazoo/lutron-leap-js) library, which implements the Lutron LEAP protocol, used by the Lutron mobile apps and third-party integrations. It has been tested with the non-Pro and Pro bridges, and may also be able to work with RA2 (but has not been tested).
 
@@ -45,6 +45,8 @@ When this plugin was written, Lutron did not support the Serena Tilt-Only Wood B
 #### Double- and long-press speed
 
 This lets you set the speed with which you must click buttons in order to trigger a double- or a long-press of a button. The default should be comfortable for most modern computer users. My hope is that slow and fast are better for some users. If you find they do not work for you, please let me know!
+
+These features can also be disabled individually in the settings. This can improve responsiveness to the remaining types of presses. **The configuration options in HomeKit do not change, but the plug-in will ignore disabled press types.**
 
 ## 🏄 User Information
 
@@ -106,7 +108,6 @@ Note that enabling DEBUG logging increases the amount of log information _greatl
 ## 📝 To-do and contributions
 
 The following items are on my wishlist:
-* Add support for double- and long-presses on Pico remotes
 * Extend the Serena blind support to enable the tilt characteristic directly (in addition to faking lift w/ tilt)
 * Add/validate support for RA2 bridges (would require hardware donation)
 
@@ -190,6 +191,12 @@ The shape of the configuration is:
 ```json
 {
     "platform": "LutronCasetaLeap",
+        "options": {
+            "filterPico": false,
+            "filterBlinds": false,
+            "clickSpeedLong": "default",
+            "clickSpeedDouble": "default"
+        },
         "secrets": [
             {
                 "bridgeid": "0a1b2c3d",
