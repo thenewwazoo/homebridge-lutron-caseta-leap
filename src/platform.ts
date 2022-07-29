@@ -33,8 +33,8 @@ interface PlatformEvents {
 export interface GlobalOptions {
     filterPico: boolean;
     filterBlinds: boolean;
-    clickSpeedLong: 'quick' | 'default' | 'relaxed';
-    clickSpeedDouble: 'quick' | 'default' | 'relaxed';
+    clickSpeedLong: 'quick' | 'default' | 'relaxed' | 'disabled';
+    clickSpeedDouble: 'quick' | 'default' | 'relaxed' | 'disabled';
 }
 
 interface BridgeAuthEntry {

@@ -27,6 +27,7 @@
                         <option value="quick">Quick</option>
                         <option selected value="default">Default</option>
                         <option value="relaxed">Relaxed</option>
+                        <option value="disabled">Disabled</option>
                     </select>
                 </div>
 
@@ -36,6 +37,7 @@
                         <option value="quick">Quick</option>
                         <option value="default" selected>Default</option>
                         <option value="relaxed">Relaxed</option>
+                        <option value="disabled">Disabled</option>
                     </select>
                 </div>
 
@@ -95,8 +97,10 @@
             return;
         }
 
-        document.querySelector('#filterPicoChk').value = pluginConfig[0].options.filterPico;
-        document.querySelector('#filterBlindsChk').value = pluginConfig[0].options.filterBlinds;
+        console.log(pluginConfig[0]);
+        console.log(document.querySelector('#filterPicoChk'));
+        document.querySelector('#filterPicoChk').checked = pluginConfig[0].options.filterPico;
+        document.querySelector('#filterBlindsChk').checked = pluginConfig[0].options.filterBlinds;
         document.querySelector('#clickSpeedLongSelect').value = pluginConfig[0].options.clickSpeedLong;
         document.querySelector('#clickSpeedDoubleSelect').value = pluginConfig[0].options.clickSpeedDouble;
 
@@ -112,7 +116,6 @@
         });
 
         let secretMap = new Map();
-        pluginConfig = bootstrapConfig(pluginConfig);
         secretMap = new Map(pluginConfig[0].secrets.map((o) => [o.bridgeid.toUpperCase(), o]));
         let bridgeMap = new Map();
 
