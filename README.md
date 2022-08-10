@@ -71,6 +71,7 @@ I don't own one of every remote type, so I've had to make guesses about the othe
 * [3-Button](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-3B&Section=Documents) (*untested*)
 * [3-Button with raise/lower](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-3BRL&Section=Documents)
 * [4-Button Scene Selector](https://www.lutron.com/TechnicalDocumentLibrary/369847.pdf) (note only `-L01` model is supported)
+* [4-Button Dual Group](https://www.lutron.com/TechnicalDocumentLibrary/369847.pdf) (`-L21`)
 
 I'd love to have complete, tested support of all remote types. If you have hardware that is partially- or un-supported and, adding support is fast and easy. I would also be happy to add support for hardware that is provided to me.
 
