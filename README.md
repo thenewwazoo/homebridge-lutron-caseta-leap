@@ -70,6 +70,7 @@ I don't own one of every remote type, so I've had to make guesses about the othe
 * [2-Button with raise/lower](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-2BRL&Section=Documents)
 * [3-Button](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-3B&Section=Documents) (*untested*)
 * [3-Button with raise/lower](https://www.lutron.com/en-US/pages/SupportCenter/support.aspx?modelNumber=PJ2-3BRL&Section=Documents)
+* [3-Button Shade with raise/lower](https://www.lutron.com/TechnicalDocumentLibrary/369612.pdf) (`-S01`)
 * [4-Button Scene Selector](https://www.lutron.com/TechnicalDocumentLibrary/369847.pdf) (note only `-L01` model is supported)
 * [4-Button Dual Group](https://www.lutron.com/TechnicalDocumentLibrary/369847.pdf) (`-L21`)
 
