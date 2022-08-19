@@ -16,7 +16,7 @@ export class SerenaTiltOnlyWoodBlinds {
     constructor(
         private readonly platform: LutronCasetaLeap,
         private readonly accessory: PlatformAccessory,
-        private readonly bridge: Promise<SmartBridge>,
+        private readonly bridge: SmartBridge,
     ) {
         this.device = accessory.context.device;
 
@@ -86,8 +86,7 @@ export class SerenaTiltOnlyWoodBlinds {
             this.device.FullyQualifiedName.join(' '),
             'were asked for current or target position',
         );
-        const bridge = await this.bridge;
-        const tilt = await bridge.readBlindsTilt(this.device);
+        const tilt = await this.bridge.readBlindsTilt(this.device);
         const adj_val = Math.min(100, tilt * 2);
         this.platform.log.info(
             'Told Homekit that blinds',
@@ -106,8 +105,7 @@ export class SerenaTiltOnlyWoodBlinds {
             'blinds to (adjusted) value',
             adj_val,
         );
-        const bridge = await this.bridge;
-        await bridge.setBlindsTilt(this.device, adj_val);
+        await this.bridge.setBlindsTilt(this.device, adj_val);
     }
 
     handlePositionStateGet(cb: CharacteristicGetCallback): void {
