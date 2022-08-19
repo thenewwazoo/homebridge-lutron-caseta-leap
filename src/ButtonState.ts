@@ -105,7 +105,6 @@ export class ButtonTracker {
         if (isUpDownButton && !this.doublePressDisabled) {
             this.doublePressTimeout += UP_DOWN_BTN_DELAY_MS;
         }
-
     }
 
     reset() {

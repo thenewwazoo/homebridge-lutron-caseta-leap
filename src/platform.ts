@@ -23,7 +23,6 @@ import { BridgeManager } from './BridgeManager';
 import fs from 'fs';
 import v8 from 'v8';
 import process from 'process';
-import * as util from 'util';
 
 interface PlatformEvents {
     unsolicited: (response: Response) => void;
@@ -44,9 +43,18 @@ interface BridgeAuthEntry {
     cert: string;
 }
 
+export class SkipDevice extends Error {
+    constructor(msg) {
+        super(msg);
+        Object.setPrototypeOf(this, SkipDevice.prototype);
+        this.name = 'Skipping';
+    }
+}
+
 export class LutronCasetaLeap
     extends (EventEmitter as new () => TypedEmitter<PlatformEvents>)
-    implements DynamicPlatformPlugin {
+    implements DynamicPlatformPlugin
+{
     private readonly accessories: Map<string, PlatformAccessory> = new Map();
     private finder: BridgeFinder | null = null;
     private options: GlobalOptions;
@@ -135,61 +143,7 @@ export class LutronCasetaLeap
         return out;
     }
 
-    /*
-     * This function is invoked when homebridge restores cached accessories from disk at startup.
-     * It should be used to setup event handlers for characteristics and update respective values.
-     */
     configureAccessory(accessory: PlatformAccessory): void {
-        // At this point, we very likely do not have a bridge for the
-        // accessory, so we use the bridge manager to pass a promise based on
-        // the bridge ID, which we previously saved in the accessory context.
-        const bridge = this.bridgeMgr.getBridge(accessory.context.bridgeID);
-
-        const fullName = accessory.context.device.FullyQualifiedName.join(' ');
-        this.log.info(
-            `Restoring cached ${accessory.context.device.DeviceType} ${accessory.UUID} on bridge ${accessory.context.bridgeID}`,
-        );
-
-        switch (accessory.context.device.DeviceType) {
-            case 'SerenaTiltOnlyWoodBlind': {
-                if (this.options.filterBlinds) {
-                    this.log.warn(`Serena wood blinds support disabled. Skipping ${fullName}`);
-                    return;
-                }
-
-                this.log.info(`Restoring blinds ${fullName}`);
-                new SerenaTiltOnlyWoodBlinds(this, accessory, bridge);
-
-                break;
-            }
-
-            case 'Pico2Button':
-            case 'Pico2ButtonRaiseLower':
-            case 'Pico3Button':
-            case 'Pico3ButtonRaiseLower':
-            case 'Pico4Button2Group':
-            case 'Pico4ButtonZone':
-            case 'Pico4ButtonScene': {
-                this.log.info(`Restoring Pico remote ${fullName} on bridge ${accessory.context.bridgeID}`);
-
-                new PicoRemote(this, accessory, bridge, this.options);
-                break;
-            }
-
-            case 'RPSOccupancySensor': {
-                this.log.info(`Restoring occupancy sensor ${fullName} on bridge ${accessory.context.bridgeID}`);
-
-                const sensor = new OccupancySensor(this, accessory, bridge);
-                sensor.initialize().then(() => this.log.debug('Finished setting up occupancy sensor'));
-                break;
-            }
-
-            default:
-                this.log.warn(
-                    `Accessory ${util.inspect(accessory)} was cached but is not supported. Did you downgrade?`,
-                );
-        }
-
         this.accessories.set(accessory.UUID, accessory);
     }
 
@@ -214,20 +168,16 @@ export class LutronCasetaLeap
     }
 
     private processAllDevices(bridge: SmartBridge) {
-        bridge
-            .getDeviceInfo()
-            .then(async (devices: DeviceDefinition[]) => {
-                for (const d of devices) {
-                    try {
-                        await this.processDevice(bridge, d);
-                    } catch (e) {
-                        this.log.error('Failed to process device', d.FullyQualifiedName.join(' '));
-                    }
+        bridge.getDeviceInfo().then(async (devices: DeviceDefinition[]) => {
+            const results: PromiseSettledResult<void>[] = await Promise.allSettled(
+                devices.map((device: DeviceDefinition) => this.processDevice(bridge, device)),
+            );
+            for (const result of results) {
+                if (result.status === 'rejected') {
+                    this.log.error(`Failed to process device: ${result.reason}`);
                 }
-            })
-            .catch((e) => {
-                this.log.error(`Failed to process devices on new bridge ${bridge.bridgeID}: ${e}`);
-            });
+            }
+        });
 
         bridge.on('unsolicited', this.handleUnsolicitedMessage.bind(this));
     }
@@ -236,29 +186,49 @@ export class LutronCasetaLeap
         const fullName = d.FullyQualifiedName.join(' ');
         const uuid = this.api.hap.uuid.generate(d.SerialNumber.toString());
 
-        if (this.accessories.has(uuid)) {
-            this.log.info(`Accessory ${d.DeviceType} ${uuid} ${fullName} already set up. Skipping.`);
-            return;
-        }
+        const accessory: PlatformAccessory | undefined = this.accessories.get(uuid);
+        if (accessory) {
+            // either re-setup the device or remove it
+            try {
+                await this.wireAccessory(accessory, bridge, d);
+                accessory.displayName = fullName;
+            } catch (e) {
+                this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+                return Promise.reject(new Error(`Failed to wire cached device ${fullName}: ${e}`));
+            }
+        } else {
+            // new device, create an accessory and add it (or skip it)
+            const accessory: PlatformAccessory<Record<string, DeviceDefinition | string>> | void =
+                new this.api.platformAccessory(fullName, uuid);
 
-        const accessory: PlatformAccessory<Record<string, DeviceDefinition | string>> | void =
-            new this.api.platformAccessory(fullName, uuid);
-        accessory.context.device = d;
+            try {
+                await this.wireAccessory(accessory, bridge, d);
+            } catch (e) {
+                return Promise.reject(new Error(`Failed to wire new device ${fullName}: ${e}`));
+            }
+
+            this.accessories.set(accessory.UUID, accessory);
+            this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+        }
+    }
+
+    wireAccessory(accessory: PlatformAccessory, bridge: SmartBridge, device: DeviceDefinition): Promise<void> {
+        const fullName = device.FullyQualifiedName.join(' ');
+        accessory.context.device = device;
         accessory.context.bridgeID = bridge.bridgeID;
 
-        switch (d.DeviceType) {
+        switch (device.DeviceType) {
             case 'SerenaTiltOnlyWoodBlind': {
                 this.log.info('Found a new Serena blind:', fullName);
 
                 if (this.options.filterBlinds) {
-                    this.log.warn(`Serena wood blinds support disabled. Skipping ${fullName}`);
-                    return;
+                    throw new SkipDevice('Serena wood blinds support disabled.');
                 }
 
                 // SIDE EFFECT: this constructor mutates the accessory object
-                new SerenaTiltOnlyWoodBlinds(this, accessory, this.bridgeMgr.getBridge(bridge.bridgeID));
+                new SerenaTiltOnlyWoodBlinds(this, accessory, bridge);
 
-                break;
+                return Promise.resolve();
             }
 
             case 'Pico2Button':
@@ -268,20 +238,18 @@ export class LutronCasetaLeap
             case 'Pico4Button2Group':
             case 'Pico4ButtonScene':
             case 'Pico4ButtonZone': {
-                this.log.info(`Found a new ${d.DeviceType} remote ${fullName}`);
+                this.log.info(`Found a new ${device.DeviceType} remote ${fullName}`);
 
                 // SIDE EFFECT: this constructor mutates the accessory object
-                new PicoRemote(this, accessory, this.bridgeMgr.getBridge(bridge.bridgeID), this.options);
-
-                break;
+                const remote = new PicoRemote(this, accessory, bridge, this.options);
+                return remote.initialize();
             }
 
             case 'RPSOccupancySensor': {
-                this.log.info(`Found a new ${d.DeviceType} occupancy sensor ${fullName}`);
+                this.log.info(`Found a new ${device.DeviceType} occupancy sensor ${fullName}`);
 
                 const sensor = new OccupancySensor(this, accessory, this.bridgeMgr.getBridge(bridge.bridgeID));
-                await sensor.initialize();
-                break;
+                return sensor.initialize();
             }
 
             // known devices that are exposed directly to homekit
@@ -289,40 +257,30 @@ export class LutronCasetaLeap
             case 'WallSwitch':
             case 'WallDimmer':
             case 'CasetaFanSpeedController': {
-                this.log.info(`Device type ${d.DeviceType} supported natively, skipping setup`);
-                return;
+                return Promise.reject(
+                    new SkipDevice(`Device type ${device.DeviceType} supported natively, skipping setup`),
+                );
             }
 
             // TODO
             // known devices that are not exposed to homekit, pending support
             case 'Pico4Button':
             case 'FourGroupRemote': {
-                this.log.info(
-                    'Device type',
-                    d.DeviceType,
-                    'not yet supported, skipping setup. Please file a request ticket.',
+                return Promise.reject(
+                    new SkipDevice(
+                        `Device type ${device.DeviceType} not yet supported, skipping setup. Please file a request ticket`,
+                    ),
                 );
-                return;
             }
 
             // any device we don't know about yet
             default:
-                this.log.info(
-                    'Device type',
-                    d.DeviceType,
-                    'not recognized, skipping setup. Please file a ticket to include information about it',
+                return Promise.reject(
+                    new SkipDevice(
+                        `Device type ${device.DeviceType} not recognized. Please file a ticket and tell me about it`,
+                    ),
                 );
-                return;
         }
-
-        try {
-            this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-        } catch (e) {
-            this.log.error(`Could not register ${d.DeviceType} named ${fullName} with uuid ${uuid}: ${e}`);
-            return;
-        }
-
-        this.accessories.set(uuid, accessory);
     }
 
     handleUnsolicitedMessage(bridgeID: string, response: Response) {
