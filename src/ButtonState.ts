@@ -174,32 +174,31 @@ export class ButtonTracker {
                     this.log.debug(`btrk ${this.href} now in UP state`);
                 } else {
                     // action == "Press"
-                    this.log.error('btrk invalid action for state. resetting');
+                    this.log.error(`btrk invalid action ${action} for state ${this.state}. resetting`);
                     this.reset();
                 }
                 break;
             }
 
-            case ButtonState.UP:
-                {
-                    if (action === 'Press' && this.timer) {
-                        // the button was pressed again before the timer fired
-                        this.log.debug(`btrk ${this.href} pressed before double-tap expiry`);
-                        this.reset();
+            case ButtonState.UP: {
+                if (action === 'Press' && this.timer) {
+                    // the button was pressed again before the timer fired
+                    this.log.debug(`btrk ${this.href} pressed before double-tap expiry`);
+                    this.reset();
 
-                        if (this.doublePressDisabled) {
-                            this.log.info(`button ${this.href} double press disabled. suppressing.`);
-                            return;
-                        }
-
-                        this.log.info(`button ${this.href} got a double press`);
-                        this.doublePressCB();
-                    } else {
-                        this.log.error('btrk invalid action for state. resetting');
-                        this.reset();
+                    if (this.doublePressDisabled) {
+                        this.log.info(`button ${this.href} double press disabled. suppressing.`);
+                        return;
                     }
+
+                    this.log.info(`button ${this.href} got a double press`);
+                    this.doublePressCB();
+                } else {
+                    this.log.error(`btrk invalid action ${action} for state ${this.state}. resetting`);
+                    this.reset();
                 }
                 break;
+            }
         }
     }
 }
