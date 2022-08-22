@@ -256,7 +256,10 @@ export class LutronCasetaLeap
             case 'SmartBridge':
             case 'WallSwitch':
             case 'WallDimmer':
-            case 'CasetaFanSpeedController': {
+            case 'CasetaFanSpeedController':
+            case 'RA2SelectMainRepeater':
+            case 'InLineDimmer':
+            case 'InLineSwitch': {
                 return Promise.reject(
                     new SkipDevice(`Device type ${device.DeviceType} supported natively, skipping setup`),
                 );
