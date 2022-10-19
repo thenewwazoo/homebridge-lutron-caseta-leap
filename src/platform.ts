@@ -257,7 +257,8 @@ export class LutronCasetaLeap
             case 'WallSwitch':
             case 'WallDimmer':
             case 'CasetaFanSpeedController':
-            case 'SerenaRollerShade': {
+            case 'SerenaRollerShade':
+            case 'DivaSmartDimmer': {
                 return Promise.reject(
                     new SkipDevice(`Device type ${device.DeviceType} supported natively, skipping setup`),
                 );
