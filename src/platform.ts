@@ -253,6 +253,8 @@ export class LutronCasetaLeap
             }
 
             // known devices that are exposed directly to homekit
+            case 'OutdoorPlugInSwitch':
+            case 'PlugInDimmer':
             case 'SmartBridge':
             case 'WallSwitch':
             case 'WallDimmer':
