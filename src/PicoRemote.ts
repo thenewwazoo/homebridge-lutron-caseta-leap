@@ -1,6 +1,6 @@
 import { Service, PlatformAccessory } from 'homebridge';
 
-import { GlobalOptions, LutronCasetaLeap, SkipDevice } from './platform';
+import { GlobalOptions, LutronCasetaLeap, DeviceWireResult, DeviceWireResultType } from './platform';
 import { ButtonTracker } from './ButtonState';
 import { ExceptionDetail, OneButtonStatusEvent, Response, SmartBridge, ButtonDefinition } from 'lutron-leap';
 
@@ -99,7 +99,7 @@ export class PicoRemote {
         private readonly options: GlobalOptions,
     ) {}
 
-    public async initialize(): Promise<void> {
+    public async initialize(): Promise<DeviceWireResult> {
         const fullName = this.accessory.context.device.FullyQualifiedName.join(' ');
 
         this.accessory
@@ -124,18 +124,24 @@ export class PicoRemote {
             bgs = await this.bridge.getButtonGroupsFromDevice(this.accessory.context.device);
         } catch (e) {
             this.platform.log.error('Failed to get button group(s) belonging to', fullName, e);
-            throw e;
+            return {
+                kind: DeviceWireResultType.Error,
+                reason: `Failed to get button group(s) belonging to ${fullName}: ${e}`,
+            };
         }
 
         // if there are any buttongroups that are already associated in the
         // lutron app, and we've been told to skip them, return early.
         if (bgs.some((bg) => bg.AffectedZones !== undefined) && this.options.filterPico) {
-            throw new SkipDevice('Associated with a device outside HomeKit');
+            return {
+                kind: DeviceWireResultType.Skipped,
+                reason: 'Associated with a device outside HomeKit',
+            };
         }
 
         bgs.forEach((bg) => {
             if (bg instanceof ExceptionDetail) {
-                throw new Error('device has been removed');
+                return new Error('Device has been removed');
             }
         });
 
@@ -145,20 +151,27 @@ export class PicoRemote {
                 buttons = buttons.concat(await this.bridge.getButtonsFromGroup(bg));
             } catch (e) {
                 this.platform.log.error('Failed to get buttons from button group', bg.href);
-                throw e;
+                return {
+                    kind: DeviceWireResultType.Error,
+                    reason: `Failed to get buttons from button group ${bg.href}: ${e}`,
+                };
             }
         }
 
         for (const button of buttons) {
             const dentry = BUTTON_MAP.get(this.accessory.context.device.DeviceType);
             if (dentry === undefined) {
-                throw new Error(`Could not find ${this.accessory.context.device.DeviceType} in button map`);
+                return {
+                    kind: DeviceWireResultType.Error,
+                    reason: `Could not find ${this.accessory.context.device.DeviceType} in button map`,
+                };
             }
             const alias = dentry.get(button.ButtonNumber);
             if (alias === undefined) {
-                throw new Error(
-                    `Could not find button ${button.ButtonNumber} in ${this.accessory.context.device.DeviceType} map entry`,
-                );
+                return {
+                    kind: DeviceWireResultType.Error,
+                    reason: `Could not find button ${button.ButtonNumber} in ${this.accessory.context.device.DeviceType} map entry`,
+                };
             }
 
             this.platform.log.debug(
@@ -214,6 +227,11 @@ export class PicoRemote {
         }
 
         this.platform.on('unsolicited', this.handleUnsolicited.bind(this));
+
+        return {
+            kind: DeviceWireResultType.Success,
+            name: fullName,
+        };
     }
 
     handleEvent(response: Response): void {

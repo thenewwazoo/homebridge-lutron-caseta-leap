@@ -1,20 +1,21 @@
 import { Service, PlatformAccessory, CharacteristicGetCallback } from 'homebridge';
 
 import { OccupancySensorRouter } from './OccupancySensorRouter';
-import { LutronCasetaLeap } from './platform';
+import { LutronCasetaLeap, DeviceWireResult, DeviceWireResultType } from './platform';
 
 import { OccupancyStatus, OneAreaDefinition, SmartBridge } from 'lutron-leap';
 
 export class OccupancySensor {
     private service: Service;
     private state: OccupancyStatus;
+    private fullName: string;
 
     constructor(
         private readonly platform: LutronCasetaLeap,
         private readonly accessory: PlatformAccessory,
         private readonly bridge: Promise<SmartBridge>,
     ) {
-        const fullName = accessory.context.device.FullyQualifiedName.join(' ');
+        this.fullName = accessory.context.device.FullyQualifiedName.join(' ');
 
         this.state = 'Unknown';
 
@@ -31,7 +32,7 @@ export class OccupancySensor {
             this.accessory.getService(this.platform.api.hap.Service.OccupancySensor) ||
             this.accessory.addService(this.platform.api.hap.Service.OccupancySensor);
 
-        this.service.setCharacteristic(this.platform.api.hap.Characteristic.Name, fullName);
+        this.service.setCharacteristic(this.platform.api.hap.Characteristic.Name, this.fullName);
 
         // If the status is 'Occupied', the sensor is occupied. If 'Unoccupied'
         // or 'Unknown', unoccupied.
@@ -109,7 +110,7 @@ export class OccupancySensor {
         }
     }
 
-    public async initialize(): Promise<void> {
+    public async initialize(): Promise<DeviceWireResult> {
         const bridge = await this.bridge;
         const area: OneAreaDefinition = (await bridge.getHref(
             this.accessory.context.device.AssociatedArea,
@@ -117,5 +118,10 @@ export class OccupancySensor {
 
         const router = OccupancySensorRouter.getInstance();
         await router.register(bridge, area.Area.AssociatedOccupancyGroups[0], this.update.bind(this));
+
+        return {
+            kind: DeviceWireResultType.Success,
+            name: this.fullName,
+        };
     }
 }
