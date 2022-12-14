@@ -26,7 +26,7 @@ import process from 'process';
 
 type PlatformEvents = {
     unsolicited: (response: Response) => void;
-}
+};
 
 // see config.schema.json
 export interface GlobalOptions {

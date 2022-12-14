@@ -12,6 +12,16 @@ Because HomeKit control for dimmers and switches, etc, are natively supported by
 
 This plugin makes use of the [lutron-leap-js](https://github.com/thenewwazoo/lutron-leap-js) library, which implements the Lutron LEAP protocol, used by the Lutron mobile apps and third-party integrations. It has been tested with the non-Pro and Pro bridges, and may also be able to work with RA2 (but has not been tested).
 
+## 🧧 Support and Donations
+
+I've been asked more than once how appreciative users can support my development or make donations. I built this plugin to scratch an itch. Further development isn't needed for my own personal use cases, but support to enable me to buy and test other equipment is greatly appreciated. So far, generous users have provided me with funds and equipment that has resulted in Pico and occupancy sensor support. Thank you all so much!
+
+<p align="center">
+<a href="https://www.paypal.com/donate/?business=TPDRZ5F2GRK32&no_recurring=0&currency_code=USD"><img src="assets/PP_Acceptance_Marks_for_LogoCenter_76x48.png" border="0" align="center" /></a>&nbsp;&nbsp;&nbsp;
+<a href="https://cash.app/$thenewazoo"><img src="assets/cash_app_dollar_icon.png" width="50" height="50" align="center" /></a>&nbsp;&nbsp;&nbsp;
+<a href="https://venmo.com/?txn=pay&audience=public&recipients=venmo@optimaltour.us"><img src="assets/Venmo_Monogram.png" align="center" /></a>
+</p>
+
 ## 🏗 Installation and Setup
 
 This plugin requires [`homebridge-config-ui-x`](https://github.com/oznu/homebridge-config-ui-x#readme) for initial setup. Install the plugin using the UI.
