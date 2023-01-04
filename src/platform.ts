@@ -34,6 +34,7 @@ export interface GlobalOptions {
     filterBlinds: boolean;
     clickSpeedLong: 'quick' | 'default' | 'relaxed' | 'disabled';
     clickSpeedDouble: 'quick' | 'default' | 'relaxed' | 'disabled';
+    logSSLKeyDangerous: boolean;
 }
 
 interface BridgeAuthEntry {
@@ -139,6 +140,7 @@ export class LutronCasetaLeap
                 filterBlinds: false,
                 clickSpeedDouble: 'default',
                 clickSpeedLong: 'default',
+                logSSLKeyDangerous: false,
             },
             config.options,
         );
@@ -172,7 +174,12 @@ export class LutronCasetaLeap
         if (this.secrets.has(bridgeInfo.bridgeid.toLowerCase())) {
             const these = this.secrets.get(bridgeInfo.bridgeid.toLowerCase())!;
             this.log.debug('bridge', bridgeInfo.bridgeid, 'has secrets', JSON.stringify(these));
-            const client = new LeapClient(bridgeInfo.ipAddr, LEAP_PORT, these.ca, these.key, these.cert);
+
+            var logfile: fs.WriteStream | undefined = undefined;
+            if (this.options.logSSLKeyDangerous) {
+                logfile = fs.createWriteStream(`/tmp/${bridgeInfo.bridgeid}-tlskey.log`, { flags: 'a' });
+            }
+            const client = new LeapClient(bridgeInfo.ipAddr, LEAP_PORT, these.ca, these.key, these.cert, logfile);
             const bridge = new SmartBridge(bridgeInfo.bridgeid.toLowerCase(), client);
             this.bridgeMgr.addBridge(bridge);
             this.processAllDevices(bridge);
