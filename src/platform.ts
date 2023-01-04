@@ -175,7 +175,7 @@ export class LutronCasetaLeap
             const these = this.secrets.get(bridgeInfo.bridgeid.toLowerCase())!;
             this.log.debug('bridge', bridgeInfo.bridgeid, 'has secrets', JSON.stringify(these));
 
-            var logfile: fs.WriteStream | undefined = undefined;
+            let logfile: fs.WriteStream | undefined = undefined;
             if (this.options.logSSLKeyDangerous) {
                 logfile = fs.createWriteStream(`/tmp/${bridgeInfo.bridgeid}-tlskey.log`, { flags: 'a' });
             }
