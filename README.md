@@ -92,6 +92,12 @@ If you need find a bug, need help with this plugin, or have questions, the best 
 
 This plugin doesn't often change, but when I add big features or make big changes, I will occasionally join the [`#lutron-caseta-leap`](https://discord.com/channels/432663330281226270/927991341923852389) channel on the [Homebridge Discord server](https://discord.gg/RcV7fa8).
 
+### Something weird is happening / The plugin is running slowly / Devices aren't appearing
+
+If the plugin is generally misbehaving, users have reported success in running this plugin in a [child bridge](https://github.com/homebridge/homebridge/wiki/Child-Bridges). Doing this will require adding the bridge as a separate device and re-configuring your devices, which may or may not be acceptable. [This issue](https://github.com/thenewwazoo/homebridge-lutron-caseta-leap/issues/96) has some steps to accomplishing that.
+
+Why does this change things? To be honest, I don't really know (and not knowing really bugs me). I've tried my best to follow best practices in designing this plugin but it seems to help sometimes. :(
+
 ### My bridge doesn't appear in the configuration UI
 
 Bridge discovery works using mDNS aka Bonjour aka zeroconf. This means that your Homebridge server sends a special message that's sent to every computer on the local network. If your bridge can't hear that packet for some reason, discovery won't work.
