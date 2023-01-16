@@ -224,6 +224,12 @@ export class PicoRemote {
 
             this.platform.log.debug(`subscribing to ${button.href} events`);
             this.bridge.subscribeToButton(button, this.handleEvent.bind(this));
+
+            // when the connection is lost, so are subscriptions.
+            this.bridge.on('disconnected', () => {
+                this.platform.log.debug(`re-subscribing to ${button.href} events after connection loss`);
+                this.bridge.subscribeToButton(button, this.handleEvent.bind(this));
+            });
         }
 
         this.platform.on('unsolicited', this.handleUnsolicited.bind(this));

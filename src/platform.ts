@@ -181,6 +181,10 @@ export class LutronCasetaLeap
             }
             const client = new LeapClient(bridgeInfo.ipAddr, LEAP_PORT, these.ca, these.key, these.cert, logfile);
             const bridge = new SmartBridge(bridgeInfo.bridgeid.toLowerCase(), client);
+            // every pico and occupancy sensor needs to subscribe to
+            // 'disconnected', and that may be a lot of devices, so set the max
+            // according to Caseta's 75-device limit
+            bridge.setMaxListeners(75);
             this.bridgeMgr.addBridge(bridge);
             this.processAllDevices(bridge);
         } else {

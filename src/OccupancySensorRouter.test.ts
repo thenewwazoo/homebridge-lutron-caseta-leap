@@ -133,6 +133,8 @@ describe('router sets initial state', () => {
     const mockBridge = {
         bridgeID: 'fakebridge',
         subscribeToOccupancy: mockSub,
+        /* eslint-disable @typescript-eslint/no-empty-function */
+        on: (event: string): void => {},
     };
 
     test('initial and update', async () => {

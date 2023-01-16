@@ -60,30 +60,36 @@ export class OccupancySensorRouter {
         this.subMap.set(
             bridge.bridgeID,
             new Promise((resolve, reject) => {
+                // update state and call all registered callbacks when we get an update
+                const _handleOccupancyUpdate = (r: Response) => {
+                    logDebug('subscription cb called');
+                    this.updateState(bridge.bridgeID, r.Body! as MultipleOccupancyGroupStatus);
+                    this.callRegistered(bridge.bridgeID, r.Body! as MultipleOccupancyGroupStatus);
+                };
+
+                // we get a complete listing of occupancy groups and their
+                // statuses when we subscribe, so update our internal state
+                // while we've got the info handy
+                const _handleGlobalUpdate = (initial: MultipleOccupancyGroupStatus) => {
+                    logDebug(`response from subscription call recd: ${util.inspect(initial, { depth: null })}`);
+                    this.updateState(bridge.bridgeID, initial);
+                };
+
                 // subscribe to occupancy updates for this bridge, and...
                 bridge
-                    .subscribeToOccupancy(
-                        ((r: Response) => {
-                            logDebug('subscription cb called');
-                            // ...update state and call all registered callbacks when we get an update
-                            this.updateState(bridge.bridgeID, r.Body! as MultipleOccupancyGroupStatus);
-                            this.callRegistered(bridge.bridgeID, r.Body! as MultipleOccupancyGroupStatus);
-                        }).bind(this),
-                    )
-                    .then(
-                        ((initial: MultipleOccupancyGroupStatus) => {
-                            // we get a complete listing of occupancy groups and their
-                            // statuses when we subscribe, so update our internal state
-                            // while we've got the info handy
-
-                            logDebug(`response from subscription call recd: ${util.inspect(initial, { depth: null })}`);
-                            this.updateState(bridge.bridgeID, initial);
-
-                            // resolve the promise that we'll subscribe to the bridge
-                            resolve();
-                        }).bind(this),
-                    )
+                    .subscribeToOccupancy(_handleOccupancyUpdate.bind(this))
+                    .then(_handleGlobalUpdate.bind(this))
+                    // resolve the promise that we'll subscribe to the bridge
+                    .then(() => resolve())
                     .catch((e) => reject(e));
+
+                // when the bridge is disconnected, subscriptions are lost. re-establish them.
+                bridge.on('disconnected', () => {
+                    bridge.subscribeToOccupancy(_handleOccupancyUpdate.bind(this)).then(_handleGlobalUpdate.bind(this));
+                    // WARNING: uncaught throw here will crash the program, but
+                    // there's nothing to be done if re-subscribing fails.
+                    // better to just blow it all up.
+                });
             }),
         );
     }
@@ -93,7 +99,7 @@ export class OccupancySensorRouter {
         // when there's an update. This function will subscribe to the bridge if
         // it hasn't already been done.
 
-        // The key into the three state maps
+        // Create the key used for looking into the three state maps we're about to use
         const key = this.makeKey(bridge.bridgeID, occupancyGroup);
 
         // If we're not already subscribed to this bridge's updates, let's do that.
