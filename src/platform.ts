@@ -168,7 +168,7 @@ export class LutronCasetaLeap
     private handleBridgeDiscovery(bridgeInfo: BridgeNetInfo) {
         if (this.bridgeMgr.hasBridge(bridgeInfo.bridgeid.toLowerCase())) {
             // we've already discovered this bridge, move along
-            this.log.info('Bridge', bridgeInfo.bridgeid, 'already known, closing.');
+            this.log.info('Bridge', bridgeInfo.bridgeid, 'already known, ignoring.');
             return;
         }
         if (this.secrets.has(bridgeInfo.bridgeid.toLowerCase())) {
@@ -184,7 +184,7 @@ export class LutronCasetaLeap
             this.bridgeMgr.addBridge(bridge);
             this.processAllDevices(bridge);
         } else {
-            throw new Error('no credentials for bridge ID ' + bridgeInfo.bridgeid);
+            this.log.info('no credentials from bridge ID', bridgeInfo.bridgeid);
         }
     }
 
