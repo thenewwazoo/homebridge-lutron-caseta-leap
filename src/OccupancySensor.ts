@@ -13,7 +13,7 @@ export class OccupancySensor {
     constructor(
         private readonly platform: LutronCasetaLeap,
         private readonly accessory: PlatformAccessory,
-        private readonly bridge: Promise<SmartBridge>,
+        private readonly bridge: SmartBridge,
     ) {
         this.fullName = accessory.context.device.FullyQualifiedName.join(' ');
 
@@ -111,13 +111,12 @@ export class OccupancySensor {
     }
 
     public async initialize(): Promise<DeviceWireResult> {
-        const bridge = await this.bridge;
-        const area: OneAreaDefinition = (await bridge.getHref(
+        const area: OneAreaDefinition = (await this.bridge.getHref(
             this.accessory.context.device.AssociatedArea,
         )) as OneAreaDefinition;
 
         const router = OccupancySensorRouter.getInstance();
-        await router.register(bridge, area.Area.AssociatedOccupancyGroups[0], this.update.bind(this));
+        await router.register(this.bridge, area.Area.AssociatedOccupancyGroups[0], this.update.bind(this));
 
         return {
             kind: DeviceWireResultType.Success,

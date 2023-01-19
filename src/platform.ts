@@ -18,7 +18,6 @@ import { PLUGIN_NAME, PLATFORM_NAME } from './settings';
 import { SerenaTiltOnlyWoodBlinds } from './SerenaTiltOnlyWoodBlinds';
 import { PicoRemote } from './PicoRemote';
 import { OccupancySensor } from './OccupancySensor';
-import { BridgeManager } from './BridgeManager';
 
 import fs from 'fs';
 import v8 from 'v8';
@@ -74,14 +73,12 @@ export class LutronCasetaLeap
     private finder: BridgeFinder | null = null;
     private options: GlobalOptions;
     private secrets: Map<string, BridgeAuthEntry>;
-    private bridgeMgr;
+    private bridgeMgr: Map<string, SmartBridge> = new Map();
 
     constructor(public readonly log: Logging, public readonly config: PlatformConfig, public readonly api: API) {
         super();
 
         log.info('LutronCasetaLeap starting up...');
-
-        this.bridgeMgr = new BridgeManager(this);
 
         process.on('warning', (e) => this.log.warn(`Got ${e.name} process warning: ${e.message}:\n${e.stack}`));
 
@@ -166,7 +163,7 @@ export class LutronCasetaLeap
     // ----- CUSTOM METHODS
 
     private handleBridgeDiscovery(bridgeInfo: BridgeNetInfo) {
-        if (this.bridgeMgr.hasBridge(bridgeInfo.bridgeid.toLowerCase())) {
+        if (this.bridgeMgr.has(bridgeInfo.bridgeid.toLowerCase())) {
             // we've already discovered this bridge, move along
             this.log.info('Bridge', bridgeInfo.bridgeid, 'already known, ignoring.');
             return;
@@ -179,14 +176,18 @@ export class LutronCasetaLeap
             if (this.options.logSSLKeyDangerous) {
                 logfile = fs.createWriteStream(`/tmp/${bridgeInfo.bridgeid}-tlskey.log`, { flags: 'a' });
             }
+
             const client = new LeapClient(bridgeInfo.ipAddr, LEAP_PORT, these.ca, these.key, these.cert, logfile);
             const bridge = new SmartBridge(bridgeInfo.bridgeid.toLowerCase(), client);
+
             // every pico and occupancy sensor needs to subscribe to
             // 'disconnected', and that may be a lot of devices, so set the max
             // according to Caseta's 75-device limit
             bridge.setMaxListeners(75);
-            this.bridgeMgr.addBridge(bridge);
+
+            this.bridgeMgr.set(bridge.bridgeID, bridge);
             this.processAllDevices(bridge);
+
         } else {
             this.log.info('no credentials from bridge ID', bridgeInfo.bridgeid);
         }
@@ -304,7 +305,7 @@ export class LutronCasetaLeap
             case 'RPSOccupancySensor': {
                 this.log.info(`Found a ${device.DeviceType} occupancy sensor ${fullName}`);
 
-                const sensor = new OccupancySensor(this, accessory, this.bridgeMgr.getBridge(bridge.bridgeID));
+                const sensor = new OccupancySensor(this, accessory, bridge);
                 return sensor.initialize();
             }
 
@@ -330,12 +331,14 @@ export class LutronCasetaLeap
         this.log.debug('bridge', bridgeID, 'got unsolicited message', response);
 
         if (response.CommuniqueType === 'UpdateResponse' && response.Header.Url === '/device/status/deviceheard') {
+
             const heardDevice = (response.Body! as OneDeviceStatus).DeviceStatus.DeviceHeard;
             this.log.info(`New ${heardDevice.DeviceType} s/n ${heardDevice.SerialNumber}. Triggering refresh in 30s.`);
-            this.bridgeMgr
-                .getBridge(bridgeID)
-                .then((bridge: SmartBridge) => setTimeout(() => this.processAllDevices(bridge), 30000))
-                .catch((e) => this.log.error('Failed to trigger device refresh due to newly-heard device:', e));
+            const bridge = this.bridgeMgr.get(bridgeID);
+            if (bridge !== undefined) {
+                setTimeout(() => this.processAllDevices(bridge), 30000);
+            }
+
         } else {
             this.emit('unsolicited', response);
         }
