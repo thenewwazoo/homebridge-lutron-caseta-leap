@@ -91,8 +91,8 @@ export class LutronCasetaLeap
 
         // Each device will subscribe to 'unsolicited', which means we very
         // quickly hit the limit for EventEmitters. Set this limit to the
-        // number of bridges times the per-bridge device limit.
-        this.setMaxListeners(75 * this.secrets.size);
+        // number of bridges times the per-bridge device limit, plus some fudge factor.
+        this.setMaxListeners(125 * this.secrets.size);
 
         /*
          * When this event is fired, homebridge restored all cached accessories from disk and did call their respective
@@ -163,13 +163,17 @@ export class LutronCasetaLeap
     // ----- CUSTOM METHODS
 
     private handleBridgeDiscovery(bridgeInfo: BridgeNetInfo) {
-        if (this.bridgeMgr.has(bridgeInfo.bridgeid.toLowerCase())) {
-            // we've already discovered this bridge, move along
-            this.log.info('Bridge', bridgeInfo.bridgeid, 'already known, ignoring.');
-            return;
+        var replaceClient = false;
+        let bridgeID = bridgeInfo.bridgeid.toLowerCase();
+
+        if (this.bridgeMgr.has(bridgeID)) {
+            // this is an existing bridge re-announcing itself, so we'll recycle the connection to it
+            this.log.info('Bridge', bridgeInfo.bridgeid, 'already known, will skip setup.');
+            replaceClient = true;
         }
-        if (this.secrets.has(bridgeInfo.bridgeid.toLowerCase())) {
-            const these = this.secrets.get(bridgeInfo.bridgeid.toLowerCase())!;
+
+        if (this.secrets.has(bridgeID)) {
+            const these = this.secrets.get(bridgeID)!;
             this.log.debug('bridge', bridgeInfo.bridgeid, 'has secrets', JSON.stringify(these));
 
             let logfile: fs.WriteStream | undefined = undefined;
@@ -178,15 +182,52 @@ export class LutronCasetaLeap
             }
 
             const client = new LeapClient(bridgeInfo.ipAddr, LEAP_PORT, these.ca, these.key, these.cert, logfile);
-            const bridge = new SmartBridge(bridgeInfo.bridgeid.toLowerCase(), client);
 
-            // every pico and occupancy sensor needs to subscribe to
-            // 'disconnected', and that may be a lot of devices, so set the max
-            // according to Caseta's 75-device limit
-            bridge.setMaxListeners(75);
+            if (replaceClient) {
+                // when we close the client connection, it disconnects, which
+                // causes it to emit a disconnection event. this event will
+                // propagate to the bridge that owns it, which will emit its
+                // own disconnect event, triggering re-subscriptions (at the
+                // LEAP layer) by buttons and occupancy sensors.
+                //
+                // I think there's a race here, in that the re-subscription
+                // will trigger the client reconnect, possibly before the
+                // client object in the bridge is replaced. As such, we need to
+                // replace the client object with the new client *before* we
+                // tell the old client to disconnect. because the bridge
+                // doesn't tie disconnect events to the client that emitted
+                // them (why would it?  bridges never have more than one
+                // connection), we should then be able to rely on the
+                // disconnect event machinery to set things back up for us.
+                // convenient!
 
-            this.bridgeMgr.set(bridge.bridgeID, bridge);
-            this.processAllDevices(bridge);
+                // this should, then, look like this:
+                //  - store new client in bridge
+                //  - close old client
+                //  - old client emits disconnect
+                //  - bridge gets disconnect, emits disconnect
+                //  - devices ask bridge to re-subscribe
+                //  - bridge uses new client to re-subscribe
+                //  - old client goes out of scope
+
+                // get a handle to the old client
+                let old_client = this.bridgeMgr.get(bridgeID)!;
+                // replace the old client with the new
+                this.bridgeMgr.get(bridgeID)!.client = client;
+                // close the old client's connections and remove its references to the bridge so it can be GC'd
+                old_client.close();
+            } else {
+                const bridge = new SmartBridge(bridgeID, client);
+
+                // every pico and occupancy sensor needs to subscribe to
+                // 'disconnected', and that may be a lot of devices, so set the max
+                // according to Caseta's 75-device limit plus some fudge factor
+                bridge.setMaxListeners(125);
+
+                this.bridgeMgr.set(bridge.bridgeID, bridge);
+                this.processAllDevices(bridge);
+
+            }
 
         } else {
             this.log.info('no credentials from bridge ID', bridgeInfo.bridgeid);
