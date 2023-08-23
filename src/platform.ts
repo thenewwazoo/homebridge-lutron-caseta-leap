@@ -162,12 +162,17 @@ export class LutronCasetaLeap
 
     // ----- CUSTOM METHODS
 
-    private handleBridgeDiscovery(bridgeInfo: BridgeNetInfo) {
+    private async handleBridgeDiscovery(bridgeInfo: BridgeNetInfo) {
         var replaceClient = false;
         let bridgeID = bridgeInfo.bridgeid.toLowerCase();
 
         if (this.bridgeMgr.has(bridgeID)) {
             // this is an existing bridge re-announcing itself, so we'll recycle the connection to it
+
+            if ((<any>this).bridgeMgr.get(bridgeID)!.bridgeReconfigInProgress === true){
+                this.log.info('Bridge', bridgeInfo.bridgeid, 'reconfiguration in progress, do nothing.');
+                return;
+            }
             this.log.info('Bridge', bridgeInfo.bridgeid, 'already known, will skip setup.');
             replaceClient = true;
         }
@@ -211,11 +216,21 @@ export class LutronCasetaLeap
                 //  - old client goes out of scope
 
                 // get a handle to the old client
-                let old_client = this.bridgeMgr.get(bridgeID)!;
+                (<any>this).bridgeMgr.get(bridgeID)!.bridgeReconfigInProgress = true;
+                this.log.info('Bridge', bridgeInfo.bridgeid, 'entering reconfiguration');
+                let old_client = this.bridgeMgr.get(bridgeID)!.client;
                 // replace the old client with the new
                 this.bridgeMgr.get(bridgeID)!.client = client;
                 // close the old client's connections and remove its references to the bridge so it can be GC'd
                 old_client.close();
+                // Wait 20s to before trigerring disconnection, otherwise we will get a "connection refused" message from the bridge
+                // when devices are re-subscribing
+                await new Promise(resolve => setTimeout(resolve, 20000));
+                this.bridgeMgr.get(bridgeID)!.emit('disconnected');
+                // Wait 5s to allow time for client re-connection
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                this.log.info('Bridge', bridgeInfo.bridgeid, 'exit reconfiguration');
+                (<any>this).bridgeMgr.get(bridgeID)!.bridgeReconfigInProgress = false;
             } else {
                 const bridge = new SmartBridge(bridgeID, client);
 
