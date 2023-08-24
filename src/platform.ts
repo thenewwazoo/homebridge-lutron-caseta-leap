@@ -168,7 +168,7 @@ export class LutronCasetaLeap
 
         if (this.bridgeMgr.has(bridgeID)) {
             // this is an existing bridge re-announcing itself, so we'll recycle the connection to it
-
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if ((<any>this).bridgeMgr.get(bridgeID)!.bridgeReconfigInProgress === true){
                 this.log.info('Bridge', bridgeInfo.bridgeid, 'reconfiguration in progress, do nothing.');
                 return;
@@ -216,6 +216,7 @@ export class LutronCasetaLeap
                 //  - old client goes out of scope
 
                 // get a handle to the old client
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (<any>this).bridgeMgr.get(bridgeID)!.bridgeReconfigInProgress = true;
                 this.log.info('Bridge', bridgeInfo.bridgeid, 'entering reconfiguration');
                 let old_client = this.bridgeMgr.get(bridgeID)!.client;
@@ -230,6 +231,7 @@ export class LutronCasetaLeap
                 // Wait 5s to allow time for client re-connection
                 await new Promise(resolve => setTimeout(resolve, 5000));
                 this.log.info('Bridge', bridgeInfo.bridgeid, 'exit reconfiguration');
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (<any>this).bridgeMgr.get(bridgeID)!.bridgeReconfigInProgress = false;
             } else {
                 const bridge = new SmartBridge(bridgeID, client);
