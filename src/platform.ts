@@ -90,9 +90,9 @@ export class LutronCasetaLeap
         }
 
         // Each device will subscribe to 'unsolicited', which means we very
-        // quickly hit the limit for EventEmitters. Set this limit to the
-        // number of bridges times the per-bridge device limit, plus some fudge factor.
-        this.setMaxListeners(125 * this.secrets.size);
+        // quickly hit the limit for EventEmitters. Set this limit to
+        // a very high number (see [#123](https://github.com/thenewwazoo/homebridge-lutron-caseta-leap/issues/123))
+        this.setMaxListeners(400 * this.secrets.size);
 
         /*
          * When this event is fired, homebridge restored all cached accessories from disk and did call their respective
@@ -163,8 +163,8 @@ export class LutronCasetaLeap
     // ----- CUSTOM METHODS
 
     private async handleBridgeDiscovery(bridgeInfo: BridgeNetInfo) {
-        var replaceClient = false;
-        let bridgeID = bridgeInfo.bridgeid.toLowerCase();
+        let replaceClient = false;
+        const bridgeID = bridgeInfo.bridgeid.toLowerCase();
 
         if (this.bridgeMgr.has(bridgeID)) {
             // this is an existing bridge re-announcing itself, so we'll recycle the connection to it
@@ -220,9 +220,9 @@ export class LutronCasetaLeap
                 const bridge = new SmartBridge(bridgeID, client);
 
                 // every pico and occupancy sensor needs to subscribe to
-                // 'disconnected', and that may be a lot of devices, so set the max
-                // according to Caseta's 75-device limit plus some fudge factor
-                bridge.setMaxListeners(125);
+                // 'disconnected', and that may be a lot of devices.
+                // see [#123](https://github.com/thenewwazoo/homebridge-lutron-caseta-leap/issues/123)
+                bridge.setMaxListeners(400);
 
                 this.bridgeMgr.set(bridge.bridgeID, bridge);
                 this.processAllDevices(bridge);
