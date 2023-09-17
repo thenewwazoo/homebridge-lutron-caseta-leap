@@ -162,12 +162,16 @@ export class LutronCasetaLeap
 
     // ----- CUSTOM METHODS
 
-    private handleBridgeDiscovery(bridgeInfo: BridgeNetInfo) {
+    private async handleBridgeDiscovery(bridgeInfo: BridgeNetInfo) {
         var replaceClient = false;
         let bridgeID = bridgeInfo.bridgeid.toLowerCase();
 
         if (this.bridgeMgr.has(bridgeID)) {
             // this is an existing bridge re-announcing itself, so we'll recycle the connection to it
+            if (this.bridgeMgr.get(bridgeID)!.bridgeReconfigInProgress === true){
+                this.log.info('Bridge', bridgeInfo.bridgeid, 'reconfiguration in progress, do nothing.');
+                return;
+            }
             this.log.info('Bridge', bridgeInfo.bridgeid, 'already known, will skip setup.');
             replaceClient = true;
         }
@@ -209,13 +213,9 @@ export class LutronCasetaLeap
                 //  - devices ask bridge to re-subscribe
                 //  - bridge uses new client to re-subscribe
                 //  - old client goes out of scope
-
-                // get a handle to the old client
-                let old_client = this.bridgeMgr.get(bridgeID)!;
-                // replace the old client with the new
-                this.bridgeMgr.get(bridgeID)!.client = client;
-                // close the old client's connections and remove its references to the bridge so it can be GC'd
-                old_client.close();
+                this.log.info('Bridge', bridgeInfo.bridgeid, 'entering reconfiguration');
+                await this.bridgeMgr.get(bridgeID)!.reconfigureBridge(client);
+                this.log.info('Bridge', bridgeInfo.bridgeid, 'exit reconfiguration');
             } else {
                 const bridge = new SmartBridge(bridgeID, client);
 
