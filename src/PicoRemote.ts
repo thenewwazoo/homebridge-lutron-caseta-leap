@@ -26,6 +26,12 @@ const BUTTON_MAP = new Map<string, Map<number, { label: string; index: number; i
             [0, { label: 'On', index: 1, isUpDown: false }],
             [2, { label: 'Off', index: 2, isUpDown: false }],
         ]),
+        [
+        'PaddleSwitchPico',
+        new Map([
+            [0, { label: 'On', index: 1, isUpDown: false }],
+            [2, { label: 'Off', index: 2, isUpDown: false }],
+        ]),
     ],
     [
         'Pico2ButtonRaiseLower',
