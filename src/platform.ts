@@ -329,6 +329,7 @@ export class LutronCasetaLeap
 
             // supported Pico remotes
             case 'Pico2Button':
+            case 'PaddleSwitchPico':
             case 'Pico2ButtonRaiseLower':
             case 'Pico3Button':
             case 'Pico3ButtonRaiseLower':
