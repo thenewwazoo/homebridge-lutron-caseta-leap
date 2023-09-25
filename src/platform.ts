@@ -334,7 +334,8 @@ export class LutronCasetaLeap
             case 'Pico3ButtonRaiseLower':
             case 'Pico4Button2Group':
             case 'Pico4ButtonScene':
-            case 'Pico4ButtonZone': {
+            case 'Pico4ButtonZone':
+            case 'PaddleSwitchPico': {
                 this.log.info(`Found a ${device.DeviceType} remote ${fullName}`);
 
                 // SIDE EFFECT: this constructor mutates the accessory object
