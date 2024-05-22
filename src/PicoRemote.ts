@@ -1,4 +1,4 @@
-import { Service, PlatformAccessory } from 'homebridge';
+import { Service, PlatformAccessory, Characteristic } from 'homebridge';
 
 import { GlobalOptions, LutronCasetaLeap, DeviceWireResult, DeviceWireResultType } from './platform';
 import { ButtonTracker } from './ButtonState';
@@ -104,7 +104,7 @@ export class PicoRemote {
         private readonly accessory: PlatformAccessory,
         private readonly bridge: SmartBridge,
         private readonly options: GlobalOptions,
-    ) {}
+    ) { }
 
     public async initialize(): Promise<DeviceWireResult> {
         const fullName = this.accessory.context.device.FullyQualifiedName.join(' ');
@@ -201,26 +201,73 @@ export class PicoRemote {
             service.setCharacteristic(this.platform.api.hap.Characteristic.Name, alias.label);
             service.setCharacteristic(this.platform.api.hap.Characteristic.ServiceLabelIndex, alias.index);
 
+            const validValues = [this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS];
+            if (this.options.clickSpeedDouble !== 'disabled') {
+                validValues.push(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS);
+            } else {
+                this.platform.log.debug('double press disabled');
+            }
+            if (this.options.clickSpeedLong !== 'disabled') {
+                validValues.push(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS);
+            } else {
+                this.platform.log.debug('long press disabled');
+            }
+            this.platform.log.debug('validValues', validValues);
+
             service
                 .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
-                .setProps({ maxValue: 2 });
+                .setProps({
+                    maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
+                    validValues: validValues,
+                });
+
+            const SINGLE_PRESS = () => {
+                return service
+                    .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent).setProps({
+                        maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
+                        validValues: validValues,
+                    })
+                    .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS);
+            };
+            let DOUBLE_PRESS: () => Characteristic | null;
+            if (this.options.clickSpeedDouble !== 'disabled') {
+                DOUBLE_PRESS = () => {
+                    return service
+                        .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent).setProps({
+                            maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
+                            validValues: validValues,
+                        })
+                        .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS);
+                };
+            } else {
+                DOUBLE_PRESS = () => {
+                    return null; 
+                };
+            }
+
+            let LONG_PRESS: () => Characteristic | null;
+            if (this.options.clickSpeedLong !== 'disabled') {
+                LONG_PRESS = () => {
+                    return service
+                        .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent).setProps({
+                            maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
+                            validValues: validValues,
+                        })
+                        .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS);
+                };
+            } else {
+                LONG_PRESS = () => {
+                    return null; 
+                };
+            }
 
             this.services.set(button.href, service);
             this.trackers.set(
                 button.href,
                 new ButtonTracker(
-                    () =>
-                        service
-                            .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
-                            .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS),
-                    () =>
-                        service
-                            .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
-                            .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS),
-                    () =>
-                        service
-                            .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
-                            .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS),
+                    SINGLE_PRESS,
+                    DOUBLE_PRESS,
+                    LONG_PRESS,
                     this.platform.log,
                     button.href,
                     this.options.clickSpeedDouble,
