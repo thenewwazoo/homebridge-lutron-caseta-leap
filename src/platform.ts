@@ -292,7 +292,8 @@ export class LutronCasetaLeap
                     this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
                     this.log.debug(`registered new device ${fullName} because it was new`);
                 }
-                return Promise.resolve(`Set up device ${fullName}`);
+                return Promise.resolve(is_from_cache
+                    ? `Restoring existing accessory from cache: ${fullName}` : `Adding new accessory: ${fullName}`);
             }
         }
     }
