@@ -243,7 +243,7 @@ export class PicoRemote {
                 };
             } else {
                 DOUBLE_PRESS = () => {
-                    return null; 
+                    return null;
                 };
             }
 
@@ -259,7 +259,7 @@ export class PicoRemote {
                 };
             } else {
                 LONG_PRESS = () => {
-                    return null; 
+                    return null;
                 };
             }
 

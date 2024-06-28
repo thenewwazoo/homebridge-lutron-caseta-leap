@@ -168,7 +168,7 @@ export class LutronCasetaLeap
 
         if (this.bridgeMgr.has(bridgeID)) {
             // this is an existing bridge re-announcing itself, so we'll recycle the connection to it
-            if (this.bridgeMgr.get(bridgeID)!.bridgeReconfigInProgress === true){
+            if (this.bridgeMgr.get(bridgeID)!.bridgeReconfigInProgress === true) {
                 this.log.info('Bridge', bridgeInfo.bridgeid, 'reconfiguration in progress, do nothing.');
                 return;
             }
