@@ -24,6 +24,8 @@ export class SerenaTiltOnlyWoodBlinds {
             .getService(this.platform.api.hap.Service.AccessoryInformation)!
             .setCharacteristic(this.platform.api.hap.Characteristic.Manufacturer, 'Lutron Electronics Co., Inc')
             .setCharacteristic(this.platform.api.hap.Characteristic.Model, this.device.ModelNumber)
+            .setCharacteristic(this.platform.api.hap.Characteristic.Name, this.device.FullyQualifiedName.join(' '))
+            .setCharacteristic(this.platform.api.hap.Characteristic.ConfiguredName, this.device.FullyQualifiedName.join(' '))
             .setCharacteristic(this.platform.api.hap.Characteristic.SerialNumber, this.device.SerialNumber.toString());
 
         this.service =

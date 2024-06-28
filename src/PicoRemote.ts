@@ -113,6 +113,8 @@ export class PicoRemote {
             .getService(this.platform.api.hap.Service.AccessoryInformation)!
             .setCharacteristic(this.platform.api.hap.Characteristic.Manufacturer, 'Lutron Electronics Co., Inc')
             .setCharacteristic(this.platform.api.hap.Characteristic.Model, this.accessory.context.device.ModelNumber)
+            .setCharacteristic(this.platform.api.hap.Characteristic.Name, fullName)
+            .setCharacteristic(this.platform.api.hap.Characteristic.ConfiguredName, fullName)
             .setCharacteristic(
                 this.platform.api.hap.Characteristic.SerialNumber,
                 this.accessory.context.device.SerialNumber.toString(),
