@@ -203,9 +203,17 @@ export class PicoRemote {
             service.setCharacteristic(this.platform.api.hap.Characteristic.Name, alias.label);
             service.setCharacteristic(this.platform.api.hap.Characteristic.ServiceLabelIndex, alias.index);
 
+            const validValues = [this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS]
+            if (this.options.clickSpeedDouble !== "disabled"){
+                validValues.push(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS)
+            }
+            if (this.options.clickSpeedLong !== "disabled"){
+                validValues.push(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS)
+            }
+
             service
                 .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
-                .setProps({ maxValue: 2 });
+                .setProps({ validValues, maxValue: 2 });
 
             this.services.set(button.href, service);
             this.trackers.set(
