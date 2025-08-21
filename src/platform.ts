@@ -88,7 +88,9 @@ export class LutronCasetaLeap
     this.options = this.optionsFromConfig(config)
     this.secrets = this.secretsFromConfig(config)
     if (this.secrets.size === 0) {
-      log.warn('No bridge auth configured. Retiring.')
+      log.error('No bridge authentication configured. Please use the plugin configuration UI to associate with your Lutron Smart Bridge.')
+      log.error('Without bridge credentials, this plugin cannot discover or control any Lutron devices.')
+      log.error('Visit the Homebridge UI and configure this plugin to pair with your bridge.')
       return
     }
 
@@ -148,14 +150,34 @@ export class LutronCasetaLeap
 
   secretsFromConfig(config: PlatformConfig): Map<string, BridgeAuthEntry> {
     const out = new Map()
+    
+    // Check if secrets array exists in config
+    if (!config.secrets || !Array.isArray(config.secrets)) {
+      this.log.debug('No secrets array found in configuration')
+      return out
+    }
+    
+    if (config.secrets.length === 0) {
+      this.log.debug('Empty secrets array in configuration')
+      return out
+    }
+    
     for (const entry of config.secrets as Array<BridgeAuthEntry>) {
+      // Validate that all required fields are present
+      if (!entry.bridgeid || !entry.ca || !entry.key || !entry.cert) {
+        this.log.warn(`Incomplete bridge authentication entry found - missing required fields. Bridge ID: ${entry.bridgeid || 'unknown'}`)
+        continue
+      }
+      
       out.set(entry.bridgeid.toLowerCase(), {
         ca: entry.ca,
         key: entry.key,
         cert: entry.cert,
         bridgeid: entry.bridgeid,
       })
+      this.log.debug(`Loaded authentication for bridge: ${entry.bridgeid}`)
     }
+    
     return out
   }
 
@@ -231,27 +253,59 @@ export class LutronCasetaLeap
         this.processAllDevices(bridge)
       }
     } else {
-      this.log.info('no credentials from bridge ID', bridgeInfo.bridgeid)
+      this.log.warn(`Discovered Lutron Smart Bridge ${bridgeInfo.bridgeid} at ${bridgeInfo.ipAddr}, but no authentication credentials are configured for this bridge.`)
+      this.log.warn('To connect to this bridge, use the plugin configuration UI to associate with it.')
+      this.log.warn('If you recently reset your bridge or remotes, you may need to re-associate using the configuration UI.')
     }
   }
 
   private processAllDevices(bridge: SmartBridge) {
+    this.log.debug(`Starting device discovery for bridge ${bridge.bridgeID}`)
     bridge.getDeviceInfo().then(async (devices: DeviceDefinition[]) => {
+      this.log.info(`Found ${devices.length} devices on bridge ${bridge.bridgeID}`)
+      
+      // Log device types for debugging
+      const deviceTypes = devices.reduce((acc, device) => {
+        acc[device.DeviceType] = (acc[device.DeviceType] || 0) + 1
+        return acc
+      }, {} as Record<string, number>)
+      this.log.debug('Device types discovered:', deviceTypes)
+      
       const results: PromiseSettledResult<string>[] = await Promise.allSettled(
         devices.map((device: DeviceDefinition) => this.processDevice(bridge, device)),
       )
+      
+      let successCount = 0
+      let skippedCount = 0
+      let errorCount = 0
+      
       for (const result of results) {
         switch (result.status) {
           case 'fulfilled': {
             this.log.info(`Device setup finished: ${result.value}`)
+            if (result.value.includes('Skipped')) {
+              skippedCount++
+            } else {
+              successCount++
+            }
             break
           }
           case 'rejected': {
             this.log.error(`Failed to process device: ${result.reason}`)
+            errorCount++
             break
           }
         }
       }
+      
+      this.log.info(`Device discovery complete for bridge ${bridge.bridgeID}: ${successCount} successful, ${skippedCount} skipped, ${errorCount} errors`)
+      
+      if (successCount === 0 && devices.length > 0) {
+        this.log.warn('No devices were successfully set up. Check your plugin configuration and device associations.')
+      }
+    }).catch((error) => {
+      this.log.error(`Failed to get device information from bridge ${bridge.bridgeID}:`, error)
+      this.log.error('This may indicate a connection problem with the bridge or invalid authentication credentials.')
     })
 
     bridge.on('unsolicited', this.handleUnsolicitedMessage.bind(this))
@@ -377,10 +431,16 @@ export class LutronCasetaLeap
 
     if (response.CommuniqueType === 'UpdateResponse' && response.Header.Url === '/device/status/deviceheard') {
       const heardDevice = (response.Body! as OneDeviceStatus).DeviceStatus.DeviceHeard
-      this.log.info(`New ${heardDevice.DeviceType} s/n ${heardDevice.SerialNumber}. Triggering refresh in 30s.`)
+      this.log.info(`New ${heardDevice.DeviceType} device detected with serial number ${heardDevice.SerialNumber}. Triggering device refresh in 30 seconds.`)
+      this.log.info('If this is a Pico remote that was recently reset or added, it should appear in HomeKit shortly.')
       const bridge = this.bridgeMgr.get(bridgeID)
       if (bridge !== undefined) {
-        setTimeout(() => this.processAllDevices(bridge), 30000)
+        setTimeout(() => {
+          this.log.info(`Refreshing devices after detecting new ${heardDevice.DeviceType} device...`)
+          this.processAllDevices(bridge)
+        }, 30000)
+      } else {
+        this.log.error(`Could not find bridge ${bridgeID} to refresh devices after hearing new device`)
       }
     } else {
       this.emit('unsolicited', response)
