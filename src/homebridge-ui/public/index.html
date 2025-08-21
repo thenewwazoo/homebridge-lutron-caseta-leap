@@ -146,12 +146,19 @@
                 }, 5000); // Show after 5 seconds if no bridges found
             }
 
+            let searchTimeout; // Declare timeout variable
+
             function handleDiscovered(bridgeInfo) {
                 bridgeInfo = bridgeInfo.data;
                 console.log('found bridge', bridgeInfo);
                 const bridge = new Bridge(bridgeInfo.systype, bridgeInfo.bridgeid, bridgeInfo.ipAddr);
                 bridgeList.append(bridge.getElem());
                 bridgeMap.set(bridgeInfo.bridgeid, bridge);
+
+                // Clear the search timeout since we found a bridge
+                if (searchTimeout) {
+                    clearTimeout(searchTimeout);
+                }
 
                 // Hide help message when bridges are found
                 document.getElementById('help-message').style.display = 'none';
@@ -171,7 +178,30 @@
             }
 
             homebridge.addEventListener('discovered', handleDiscovered);
-            await homebridge.request('/search'); // begin searching for bridges
+            
+            // Add timeout for bridge discovery
+            searchTimeout = setTimeout(() => {
+                homebridge.hideSpinner();
+                if (bridgeMap.size === 0) {
+                    const helpMessage = document.getElementById('help-message');
+                    helpMessage.style.display = 'block';
+                    
+                    const searchingElement = document.getElementById('searching');
+                    if (searchingElement) {
+                        searchingElement.innerHTML = '<div class="alert alert-warning">No bridges found on your network. Make sure your Lutron Smart Bridge is powered on and connected.</div>';
+                    }
+                }
+            }, 10000); // 10 second timeout
+            
+            try {
+                await homebridge.request('/search'); // begin searching for bridges
+            } catch (error) {
+                console.error('Bridge search failed:', error);
+                homebridge.hideSpinner();
+                homebridge.toast.error('Failed to search for bridges: ' + error.message);
+                const helpMessage = document.getElementById('help-message');
+                helpMessage.style.display = 'block';
+            }
 
             function handleConnected(event) {
                 console.log('success connected to bridge', event.data);
