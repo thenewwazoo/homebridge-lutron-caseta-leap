@@ -4,6 +4,7 @@ enum ButtonState {
   IDLE,
   DOWN,
   UP,
+  CONTINUOUS_PRESS,
 }
 
 // the "double press timeout" is the amount of time you have to start the
@@ -27,6 +28,10 @@ const LONG_PRESS_TIMEOUT_MS = new Map<string, number>([
   ['relaxed', 750],
   ['disabled', 0],
 ])
+
+// the "continuous press interval" is the amount of time between consecutive
+// callbacks when a button is being held down. This is only used for volume buttons.
+const CONTINUOUS_PRESS_INTERVAL_MS = 300
 
 // Up- and down-buttons on Picos (eg. PJ2-3BRL and PJ2-2BRL) appear to be
 // intentionally slowed in their response:
@@ -61,6 +66,7 @@ const UP_DOWN_BTN_DELAY_MS = 250
 
 export class ButtonTracker {
   private timer: ReturnType<typeof setTimeout> | null
+  private continuousTimer: ReturnType<typeof setTimeout> | null
   private state: ButtonState = ButtonState.IDLE
 
   private longPressTimeout?: number
@@ -68,6 +74,9 @@ export class ButtonTracker {
 
   private doublePressTimeout?: number
   private doublePressDisabled = false
+
+  private isContinuousPressEnabled = false
+  private continuousPressCB: (() => void) | null = null
 
   constructor(
     private shortPressCB: () => void,
@@ -78,10 +87,14 @@ export class ButtonTracker {
         clickSpeedDouble = 'default',
         clickSpeedLong = 'default',
         isUpDownButton = false,
+        continuousPressCB: (() => void) | null = null,
   ) {
     log.debug(`btrk ${this.href} created speed ${clickSpeedDouble} dbl ${clickSpeedLong} long`)
 
     this.timer = null
+    this.continuousTimer = null
+    this.continuousPressCB = continuousPressCB
+    this.isContinuousPressEnabled = continuousPressCB !== null && isUpDownButton
 
     if (clickSpeedLong === 'disabled') {
       this.longPressDisabled = true
@@ -112,7 +125,11 @@ export class ButtonTracker {
     if (this.timer) {
       clearTimeout(this.timer)
     }
+    if (this.continuousTimer) {
+      clearTimeout(this.continuousTimer)
+    }
     this.timer = null
+    this.continuousTimer = null
     this.log.debug('btrk reset to IDLE')
   }
 
@@ -126,13 +143,31 @@ export class ButtonTracker {
 
     const longPressTimeoutHandler = () => {
       this.log.debug(`btrk ${this.href} long press timeout`)
-      this.reset()
 
       if (this.longPressDisabled) {
         // unreachable
         return
       }
 
+      // If continuous press is enabled, start continuous mode
+      if (this.isContinuousPressEnabled && this.continuousPressCB) {
+        this.state = ButtonState.CONTINUOUS_PRESS
+        this.log.info(`button ${this.href} entering continuous press mode`)
+
+        // Execute the callback immediately
+        this.continuousPressCB()
+
+        // Set up the interval for continuous calls
+        this.continuousTimer = setInterval(() => {
+          this.log.debug(`btrk ${this.href} continuous press callback`)
+          this.continuousPressCB!()
+        }, CONTINUOUS_PRESS_INTERVAL_MS)
+
+        return
+      }
+
+      // Standard long press behavior
+      this.reset()
       this.log.info(`button ${this.href} got a long press`)
       this.longPressCB()
     }

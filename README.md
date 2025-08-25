@@ -54,6 +54,59 @@ Click the save button at the bottom, and you're done.
 
 ### Options
 
+#### BluOS Audio Remote Configuration
+
+This plugin supports using Pico remotes to control BluOS audio players. The BluOS playerMap in `src/bluos/config.ts` determines which remotes should be treated as audio remotes -- any Pico remote with a serial number that appears in this map will be configured as an audio remote.
+
+Setup is required to configure the plugin to work with your environment:
+
+Copy `src/bluos/config.ts.sample` to `src/bluos/config.ts` and edit:
+
+- Configure IP addresses and ports for BluOS players
+- Set up virtual player groups if desired
+- Map Pico remote serial numbers to player names (these remotes will automatically be treated as audio remotes)
+
+(Find device serial numbers in the Homebridge UI under Accessories > device_name > Accessory Information > Serial Number)
+
+#### CLI Usage
+
+This plugin includes a command-line interface for controlling BluOS players directly. After building the project, you can use the CLI as follows:
+
+```bash
+# Check player status
+./dist/bluos/cli.js living status
+
+# Toggle play/pause
+./dist/bluos/cli.js kitchen playpause
+
+# Navigate presets
+./dist/bluos/cli.js living preset next
+./dist/bluos/cli.js living preset previous
+
+# Skip tracks
+./dist/bluos/cli.js kitchen skip next
+./dist/bluos/cli.js kitchen skip previous
+
+# Control volume
+./dist/bluos/cli.js garage volume up
+./dist/bluos/cli.js garage volume down
+
+# Get help
+./dist/bluos/cli.js
+```
+
+**Available Commands:**
+
+- `playpause` - Toggle play/pause for the specified player
+- `status` - Get current status of the specified player (returns exit code 0 if playing, 1 if not)
+- `preset <next|previous>` - Navigate to next/previous preset
+- `skip <next|previous>` - Skip to next/previous track
+- `volume <up|down>` - Increase/decrease volume
+
+**Available Players:** The CLI will show all configured players from your `src/bluos/config.ts` file.
+
+You can also install the CLI globally by running `npm link` in the project directory, which will make the `bluos` command available system-wide.
+
 #### Exclude Picos...
 
 By default, all known Pico remotes are shown in the Home app. This means their functionality is duplicated, in a sense. Configuration in Homekit has no effect on operation with paired accessories, or anything else in the Lutron app. With no further action, you can use them (HomeKit and the Lutron App) both simultaneously.
@@ -153,13 +206,17 @@ I welcome contributions! I wrote this to scratch an itch (no Serena wood blind s
 
 (rough notes)
 
-- Check this out
-- Check out the lutron-leap-js repo
-- Make changes there and `npm run build` it
+- Clone this repo
+- Clone the lutron-leap-js repo
+- Make changes there if needed and `npm run build` it
 - `npm install ../lutron-leap-js`
-- Make changes here
+- For BluOS integration:
+  - Copy `src/bluos/config.template.ts` to `src/bluos/config.ts` and customize for your environment
+- Make changes in this repo
 - `rm ~/.homebridge/accessories/cachedAccessories; DEBUG='leap:*,HAP-NodeJS:Accessory' npm run watch`
 - `npm run lint`
+- If pushing to a remote server, create .env file from .env.template and specify ssh connection and remote homebridge user
+- `npm run deploy`
 
 ## 💨 Legacy Configuration
 

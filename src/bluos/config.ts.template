@@ -1,0 +1,21 @@
+import type { Players } from "./controller.js"
+
+// Configure your physical players with their network details
+// Default volume and first preset are specified for each player
+export const players: Players = {
+  living_room: { ip: "192.168.x.x", port: 11000, volume: 25, preset: 1 },
+  kitchen: { ip: "192.168.x.x", port: 11000, volume: 10, preset: 1 },
+  garage: { ip: "192.168.x.x", port: 11010, volume: 40, preset: 1 },
+  office: { ip: "192.168.x.x", port: 11000, volume: 20, preset: 1 },
+  bathroom: { ip: "192.168.x.x", port: 11020, volume: 40, preset: 1 },
+  bedroom: { ip: "192.168.x.x", port: 11000, volume: 20, preset: 1 },
+};
+
+// Maps device serial number to the name of the player to control
+// Serial numbers can be found in homebridge UI > Accessories > device_name > Accessory Information > Serial Number
+// Example: [serialNumber, playerName]
+export const playerMap = new Map<string, string>([
+  ["000000000", "living"],
+  ["000000001", "bedroom"],
+  ["000000002", "garage"],
+]);

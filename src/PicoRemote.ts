@@ -100,15 +100,92 @@ const BUTTON_MAP = new Map<string, Map<number, { label: string, index: number, i
 ])
 
 export class PicoRemote {
-  private services: Map<string, Service> = new Map()
-  private trackers: Map<string, ButtonTracker> = new Map()
+  protected services: Map<string, Service> = new Map()
+  protected trackers: Map<string, ButtonTracker> = new Map()
+
+  /**
+   * Helper method to set up a button tracker and store the service.
+   * This method is used by both PicoRemote and AudioPicoRemote classes.
+   */
+  protected setupButtonTracker(
+    buttonHref: string,
+    service: Service,
+    singlePressCB: () => any,
+    doublePressCB: () => any,
+    longPressCB: () => any,
+    isUpDown: boolean,
+  ): void {
+    this.services.set(buttonHref, service)
+    this.trackers.set(
+      buttonHref,
+      new ButtonTracker(
+        singlePressCB,
+        doublePressCB,
+        longPressCB,
+        this.platform.log,
+        buttonHref,
+        this.options.clickSpeedDouble,
+        this.options.clickSpeedLong,
+        isUpDown,
+      ),
+    )
+  }
 
   constructor(
-    private readonly platform: LutronCasetaLeap,
-    private readonly accessory: PlatformAccessory,
-    private readonly bridge: SmartBridge,
-    private readonly options: GlobalOptions,
+    protected readonly platform: LutronCasetaLeap,
+    protected readonly accessory: PlatformAccessory,
+    protected readonly bridge: SmartBridge,
+    protected readonly options: GlobalOptions,
   ) { }
+
+  protected async setupButton(button: ButtonDefinition, service: Service, validValues: number[], alias: { label: string, index: number, isUpDown: boolean }): Promise<void> {
+    const SINGLE_PRESS = () => {
+      return service
+        .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
+        .setProps({
+          maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
+          validValues,
+        })
+        .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS)
+    }
+
+    let DOUBLE_PRESS: () => Characteristic | null
+    if (this.options.clickSpeedDouble !== 'disabled') {
+      DOUBLE_PRESS = () => {
+        return service
+          .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
+          .setProps({
+            maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
+            validValues,
+          })
+          .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS)
+      }
+    } else {
+      DOUBLE_PRESS = () => {
+        return null
+      }
+    }
+
+    let LONG_PRESS: () => Characteristic | null
+    if (this.options.clickSpeedLong !== 'disabled') {
+      LONG_PRESS = () => {
+        return service
+          .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
+          .setProps({
+            maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
+            validValues,
+          })
+          .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS)
+      }
+    } else {
+      LONG_PRESS = () => {
+        return null
+      }
+    }
+
+    // Use helper method to set up button tracker and service
+    this.setupButtonTracker(button.href, service, SINGLE_PRESS, DOUBLE_PRESS, LONG_PRESS, alias.isUpDown)
+  }
 
   public async initialize(): Promise<DeviceWireResult> {
     const fullName = this.accessory.context.device.FullyQualifiedName.join(' ')
@@ -227,63 +304,7 @@ export class PicoRemote {
           validValues,
         })
 
-      const SINGLE_PRESS = () => {
-        return service
-          .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
-          .setProps({
-            maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
-            validValues,
-          })
-          .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS)
-      }
-      let DOUBLE_PRESS: () => Characteristic | null
-      if (this.options.clickSpeedDouble !== 'disabled') {
-        DOUBLE_PRESS = () => {
-          return service
-            .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
-            .setProps({
-              maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
-              validValues,
-            })
-            .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS)
-        }
-      } else {
-        DOUBLE_PRESS = () => {
-          return null
-        }
-      }
-
-      let LONG_PRESS: () => Characteristic | null
-      if (this.options.clickSpeedLong !== 'disabled') {
-        LONG_PRESS = () => {
-          return service
-            .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
-            .setProps({
-              maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
-              validValues,
-            })
-            .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS)
-        }
-      } else {
-        LONG_PRESS = () => {
-          return null
-        }
-      }
-
-      this.services.set(button.href, service)
-      this.trackers.set(
-        button.href,
-        new ButtonTracker(
-          SINGLE_PRESS,
-          DOUBLE_PRESS,
-          LONG_PRESS,
-          this.platform.log,
-          button.href,
-          this.options.clickSpeedDouble,
-          this.options.clickSpeedLong,
-          alias.isUpDown,
-        ),
-      )
+      await this.setupButton(button, service, validValues, alias)
 
       this.platform.log.debug(`subscribing to ${button.href} events`)
       this.bridge.subscribeToButton(button, this.handleEvent.bind(this))

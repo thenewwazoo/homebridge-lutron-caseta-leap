@@ -4,8 +4,8 @@
     "config.schema.json"
   ],
   "ext": "ts, html, json",
-  "ignore": [],
-  "exec": "DEBUG= tsc && homebridge -T -D -P -I -U ~/.homebridge-dev ..",
+  "ignore": ["dist"],
+  "exec": "npm run build && npm run push && npm run restart",
   "signal": "SIGTERM",
   "env": {
     "NODE_OPTIONS": "--trace-warnings"

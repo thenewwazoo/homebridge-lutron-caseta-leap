@@ -20,6 +20,8 @@ import {
   SmartBridge,
 } from 'lutron-leap'
 
+import { AudioPicoRemote } from './AudioPicoRemote.js'
+import { playerMap } from './bluos/index.js'
 import { OccupancySensor } from './OccupancySensor.js'
 import { PicoRemote } from './PicoRemote.js'
 import { SerenaTiltOnlyWoodBlinds } from './SerenaTiltOnlyWoodBlinds.js'
@@ -334,7 +336,17 @@ export class LutronCasetaLeap
       case 'Pico2Button':
       case 'Pico2ButtonRaiseLower':
       case 'Pico3Button':
-      case 'Pico3ButtonRaiseLower':
+      case 'Pico3ButtonRaiseLower': {
+        // Special case for audio Pico remotes
+        const deviceSerial = accessory.context.device.SerialNumber?.toString() || ''
+
+        if (this.isSerialInPlayerMap(deviceSerial)) {
+          this.log.info(`Found a ${device.DeviceType} remote ${fullName} mapped in BluOS config`)
+          const remote = new AudioPicoRemote(this, accessory, bridge, this.options)
+          return remote.initialize()
+        }
+        // falls through so non-audio remotes are handled with others
+      }
       case 'Pico4Button2Group':
       case 'Pico4ButtonScene':
       case 'Pico4ButtonZone':
@@ -369,6 +381,21 @@ export class LutronCasetaLeap
           kind: DeviceWireResultType.Skipped,
           reason: `Device type ${device.DeviceType} not supported by this plugin`,
         })
+    }
+  }
+
+  /**
+   * Checks if a device serial number is mapped in the BluOS playerMap
+   * @param serialNumber The device serial number to check
+   * @returns true if the serial number is in the playerMap, false otherwise
+   */
+  isSerialInPlayerMap(serialNumber: string): boolean {
+    try {
+      return playerMap.has(serialNumber)
+    } catch (error) {
+      // If playerMap is not yet initialized or there's an error, return false
+      this.log.debug(`Error checking playerMap for serial ${serialNumber}: ${error}`)
+      return false
     }
   }
 

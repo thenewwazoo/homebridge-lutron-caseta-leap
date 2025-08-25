@@ -1,0 +1,18 @@
+[Unit]
+Description=BluOS Living/Kitchen Sync Watcher
+After=network.target
+Wants=network.target
+StartLimitIntervalSec=0
+StartLimitBurst=0
+
+[Service]
+Type=simple
+ExecStart=/bin/bash -c 'source %h/.nvm/nvm.sh && exec node %p/dist/bluos/watcher/watcher.js'
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bluos-watcher
+
+[Install]
+WantedBy=default.target
