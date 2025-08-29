@@ -4,6 +4,32 @@ Always reference these instructions first and fallback to search or bash command
 
 This is a Homebridge plugin that provides HomeKit integration for Lutron Caseta Smart Bridge devices including Pico remotes, occupancy sensors, and Serena wood blinds. The plugin is written in TypeScript and uses the lutron-leap-js library to communicate with Lutron bridges via the LEAP protocol.
 
+## Beta Branch Workflow Requirements
+
+**IMPORTANT: All Pull Requests MUST target a beta branch first, never directly to main/latest.**
+
+### Required Labels Before Copilot Assignment
+Before assigning any issue to Copilot, it MUST have one of these labels:
+- `patch` - for bug fixes (increments patch version: 2.8.1 → 2.8.2)
+- `minor` - for new features (increments minor version: 2.8.1 → 2.9.0)  
+- `major` - for breaking changes (increments major version: 2.8.1 → 3.0.0)
+
+### Beta Branch Strategy
+1. **Always target beta branches**: PRs must be created against branches starting with `beta-*`
+2. **Beta branch naming**: Use format `beta-X.Y.Z` where X.Y.Z is the target version
+3. **Creating beta branches**: If no appropriate beta branch exists:
+   - For patch: create `beta-X.Y.(Z+1)` (e.g., current 2.8.1 → beta-2.8.2)
+   - For minor: create `beta-X.(Y+1).0` (e.g., current 2.8.1 → beta-2.9.0)
+   - For major: create `beta-(X+1).0.0` (e.g., current 2.8.1 → beta-3.0.0)
+4. **Branch creation**: Beta branches should be created from the latest stable release branch
+5. **PR workflow**: After beta testing, beta branches are merged to main/latest for release
+
+### Version Planning
+Check current version in `package.json` and follow semantic versioning:
+- **Patch** (bug fixes): Backward-compatible fixes
+- **Minor** (features): Backward-compatible new features  
+- **Major** (breaking): Changes that break backward compatibility
+
 ## Working Effectively
 
 ### Bootstrap and Build
@@ -22,11 +48,13 @@ This is a Homebridge plugin that provides HomeKit integration for Lutron Caseta 
 - IMPORTANT: TypeScript compilation will catch syntax errors that ESLint may miss.
 
 ### Development Workflow
+- **Beta branch requirement**: All development MUST happen on beta branches (beta-*)
 - Development mode: `npm run watch` -- builds and runs with nodemon, links plugin locally
 - IMPORTANT: `npm run watch` requires a proper Homebridge development environment and will try to start Homebridge
 - Copy UI files: `npm run plugin-ui` -- copies HTML files to dist directory
 - ALWAYS run `npm run build` before testing changes
 - ALWAYS run `npm run lint` before committing
+- ALWAYS create PRs against beta branches, never main/latest directly
 
 ### Documentation
 - Generate docs: `npm run docs` -- takes ~6 seconds. Uses TypeDoc.
@@ -55,6 +83,8 @@ The GitHub Actions workflow (.github/workflows/build.yml) runs:
 1. Node.js build and test using homebridge/.github standard workflow (without coverage)
 2. ESLint validation (depends on build_and_test job)
 Both must pass for PRs to be merged. The workflow runs on pushes to 'latest' branch and all pull requests.
+
+**Beta Branch Integration**: PRs should target beta branches first for testing before merging to main/latest.
 
 ## Important Directories and Files
 
@@ -130,13 +160,15 @@ Both must pass for PRs to be merged. The workflow runs on pushes to 'latest' bra
 
 The rough development workflow according to the maintainer:
 1. Check out this repository
-2. Check out the lutron-leap-js repository separately
-3. Make changes to lutron-leap-js and run `npm run build` in that repo
-4. Run `npm install ../lutron-leap-js` to use local version
-5. Make changes to this plugin
-6. Remove cached accessories: `rm ~/.homebridge/accessories/cachedAccessories`
-7. Run with debug: `DEBUG='leap:*,HAP-NodeJS:Accessory' npm run watch`
-8. Lint before committing: `npm run lint`
+2. **Create or checkout appropriate beta branch** (beta-X.Y.Z based on issue label)
+3. Check out the lutron-leap-js repository separately  
+4. Make changes to lutron-leap-js and run `npm run build` in that repo
+5. Run `npm install ../lutron-leap-js` to use local version
+6. Make changes to this plugin
+7. Remove cached accessories: `rm ~/.homebridge/accessories/cachedAccessories`
+8. Run with debug: `DEBUG='leap:*,HAP-NodeJS:Accessory' npm run watch`
+9. Lint before committing: `npm run lint`
+10. **Create PR against beta branch, never main/latest directly**
 
 ## Common Issues and Solutions
 
