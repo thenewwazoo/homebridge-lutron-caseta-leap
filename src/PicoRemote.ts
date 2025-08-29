@@ -146,6 +146,8 @@ export class PicoRemote {
     // if there are any buttongroups that are already associated in the
     // lutron app, and we've been told to skip them, return early.
     if (bgs.some(bg => bg.AffectedZones !== undefined) && this.options.filterPico) {
+      this.platform.log.info(`Skipping Pico remote ${fullName} because it is associated with devices in the Lutron app and filterPico option is enabled.`)
+      this.platform.log.info('To include this remote in HomeKit, disable the "Exclude Pico remotes that are associated..." option in the plugin configuration.')
       return {
         kind: DeviceWireResultType.Skipped,
         reason: 'Associated with a device outside HomeKit',
@@ -296,6 +298,8 @@ export class PicoRemote {
     }
 
     this.platform.on('unsolicited', this.handleUnsolicited.bind(this))
+
+    this.platform.log.info(`Successfully initialized Pico remote ${fullName} with ${buttons.length} buttons`)
 
     return {
       kind: DeviceWireResultType.Success,

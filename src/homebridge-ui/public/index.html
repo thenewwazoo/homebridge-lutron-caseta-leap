@@ -47,6 +47,17 @@
     <div id="bridges">
         <div class="card my-2" id="searching">Searching for bridges...</div>
     </div>
+    <div id="help-message" class="alert alert-info mt-3" style="display: none;">
+        <h5>No bridges configured yet?</h5>
+        <p>If you're not seeing your Lutron Smart Bridge or if your Pico remotes stopped working after a power outage:</p>
+        <ol>
+            <li>Make sure your Lutron Smart Bridge is powered on and connected to your network</li>
+            <li>Wait for bridge discovery to complete (you should see bridge cards appear above)</li>
+            <li>Click "Associate" on your bridge card and follow the pairing instructions</li>
+            <li>After successful pairing, restart Homebridge to discover your devices</li>
+        </ol>
+        <p><strong>Note:</strong> If you recently reset your Pico remotes or bridge, you may need to re-associate using this configuration UI.</p>
+    </div>
     <div id="schemapop">
         <button type="button" class="btn btn-secondary" id="schemapopbtn">Use legacy view</button>
     </div>
@@ -125,12 +136,32 @@
             const bridgeList = document.getElementById('bridges');
             bridgeList.innerHTML = '';
 
+            // Show help message if no secrets are configured
+            if (pluginConfig[0].secrets.length === 0) {
+                setTimeout(() => {
+                    const helpMessage = document.getElementById('help-message');
+                    if (bridgeMap.size === 0) {
+                        helpMessage.style.display = 'block';
+                    }
+                }, 5000); // Show after 5 seconds if no bridges found
+            }
+
+            let searchTimeout; // Declare timeout variable
+
             function handleDiscovered(bridgeInfo) {
                 bridgeInfo = bridgeInfo.data;
                 console.log('found bridge', bridgeInfo);
                 const bridge = new Bridge(bridgeInfo.systype, bridgeInfo.bridgeid, bridgeInfo.ipAddr);
                 bridgeList.append(bridge.getElem());
                 bridgeMap.set(bridgeInfo.bridgeid, bridge);
+
+                // Clear the search timeout since we found a bridge
+                if (searchTimeout) {
+                    clearTimeout(searchTimeout);
+                }
+
+                // Hide help message when bridges are found
+                document.getElementById('help-message').style.display = 'none';
 
                 const s = secretMap.get(bridge.bridgeid);
                 if (s !== undefined) {
@@ -147,7 +178,30 @@
             }
 
             homebridge.addEventListener('discovered', handleDiscovered);
-            await homebridge.request('/search'); // begin searching for bridges
+            
+            // Add timeout for bridge discovery
+            searchTimeout = setTimeout(() => {
+                homebridge.hideSpinner();
+                if (bridgeMap.size === 0) {
+                    const helpMessage = document.getElementById('help-message');
+                    helpMessage.style.display = 'block';
+                    
+                    const searchingElement = document.getElementById('searching');
+                    if (searchingElement) {
+                        searchingElement.innerHTML = '<div class="alert alert-warning">No bridges found on your network. Make sure your Lutron Smart Bridge is powered on and connected.</div>';
+                    }
+                }
+            }, 10000); // 10 second timeout
+            
+            try {
+                await homebridge.request('/search'); // begin searching for bridges
+            } catch (error) {
+                console.error('Bridge search failed:', error);
+                homebridge.hideSpinner();
+                homebridge.toast.error('Failed to search for bridges: ' + error.message);
+                const helpMessage = document.getElementById('help-message');
+                helpMessage.style.display = 'block';
+            }
 
             function handleConnected(event) {
                 console.log('success connected to bridge', event.data);
