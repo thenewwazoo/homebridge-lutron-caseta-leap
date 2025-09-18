@@ -18,7 +18,6 @@ jobs:
 
   publish:
     needs: lint
-    if: ${{ github.repository == 'homebridge-plugins/homebridge-lutron-caseta-leap' }}
     permissions:
       id-token: write
     uses: homebridge/.github/.github/workflows/npm-publish-esm.yml@latest
@@ -32,7 +31,6 @@ jobs:
 
   pre-release:
     needs: publish
-    if: ${{ github.repository == 'homebridge-plugins/homebridge-lutron-caseta-leap' }}
     uses: homebridge/.github/.github/workflows/pre-release.yml@latest
     with:
       npm_version: ${{ needs.publish.outputs.NPM_VERSION }}
@@ -44,12 +42,11 @@ jobs:
   github-releases-to-discord:
     name: Discord Webhooks
     needs: [build_and_test,publish]
-    if: ${{ github.repository == 'homebridge-plugins/homebridge-lutron-caseta-leap' }}
     uses: homebridge/.github/.github/workflows/discord-webhooks.yml@latest
     with:
-      title: "Lutron Beta Release"
+      title: "Lutron Caseta Leap Beta Release"
       description: |
         Version `v${{ needs.publish.outputs.NPM_VERSION }}`
       url: "https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v${{ needs.publish.outputs.NPM_VERSION }}"
     secrets:
-      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL_BETA || secrets.DISCORD_WEBHOOK_URL_LATEST }}
+      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL_LATEST }}
