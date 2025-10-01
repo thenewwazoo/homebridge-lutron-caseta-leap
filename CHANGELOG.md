@@ -2,6 +2,13 @@
 
 All notable changes to `homebridge` will be documented in this file. This project tries to adhere to [Semantic Versioning](http://semver.org/).
 
+## [2.8.2](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.8.2) (2025-09-18)
+
+## What's Changed
+* No notable changes
+
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.8.1...v2.8.2
+
 ## [2.8.1](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.8.1) (2025-03-04)
 
 ### What's Changes
