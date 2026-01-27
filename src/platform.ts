@@ -252,6 +252,8 @@ export class LutronCasetaLeap
           }
         }
       }
+    }).catch((error) => {
+      this.log.warn('Failed to fetch device inventory; skipping this scan:', error)
     })
 
     bridge.on('unsolicited', this.handleUnsolicitedMessage.bind(this))
@@ -275,8 +277,8 @@ export class LutronCasetaLeap
     switch (result.kind) {
       case DeviceWireResultType.Error: {
         if (is_from_cache) {
-          this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
-          this.log.debug(`un-registered cached device ${fullName} due to an error: ${result.reason}`)
+          this.log.warn(`Could not refresh device data for cached device ${fullName}; leaving accessory registered: ${result.reason}`)
+          return Promise.resolve(`Leaving cached accessory registered (refresh failed): ${fullName}`)
         }
         return Promise.reject(new Error(`Failed to wire device ${fullName}: ${result.reason}`))
       }
