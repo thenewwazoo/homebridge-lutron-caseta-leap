@@ -1,10 +1,10 @@
 import type { CharacteristicGetCallback, PlatformAccessory, Service } from 'homebridge'
-import type { OccupancyStatus, OneAreaDefinition, SmartBridge } from 'lutron-leap'
+import type { OccupancyStatus, OneAreaDefinition, OneAreaStatus, SmartBridge } from 'lutron-leap'
 
 import type { DeviceWireResult, LutronCasetaLeap } from './platform.js'
 
 import { OccupancySensorRouter } from './OccupancySensorRouter.js'
-import { DeviceWireResultType } from './platform.js'
+import { DeviceWireResultType, sanitizeHomeKitName } from './platform.js'
 
 export class OccupancySensor {
   private service: Service
@@ -16,7 +16,7 @@ export class OccupancySensor {
     private readonly accessory: PlatformAccessory,
     private readonly bridge: SmartBridge,
   ) {
-    this.fullName = accessory.context.device.FullyQualifiedName.join(' ')
+    this.fullName = sanitizeHomeKitName(accessory.context.device.FullyQualifiedName.join(' '))
 
     this.state = 'Unknown'
 
@@ -114,6 +114,35 @@ export class OccupancySensor {
       this.accessory.context.device.AssociatedArea,
     )) as OneAreaDefinition
 
+    // QSX processors track occupancy at area level, not via occupancy groups
+    if (!area.Area.AssociatedOccupancyGroups || area.Area.AssociatedOccupancyGroups.length === 0) {
+      this.platform.log.debug(`${this.fullName}: Using QSX area-based occupancy tracking`)
+
+      // Subscribe to area status updates
+      const areaStatusUrl = `${area.Area.href}/status`
+      this.bridge.client.subscribe(areaStatusUrl, (response) => {
+        const body = response.Body as OneAreaStatus | undefined
+        if (body?.AreaStatus?.OccupancyStatus) {
+          this.update(body.AreaStatus.OccupancyStatus as OccupancyStatus)
+        }
+      }).catch((e) => {
+        this.platform.log.warn(`Failed to subscribe to area status for ${this.fullName}: ${e.message}`)
+      })
+
+      // Read initial state
+      const areaStatus = await this.bridge.client.request('ReadRequest', areaStatusUrl)
+      const statusBody = areaStatus.Body as OneAreaStatus | undefined
+      if (statusBody?.AreaStatus?.OccupancyStatus) {
+        this.update(statusBody.AreaStatus.OccupancyStatus as OccupancyStatus)
+      }
+
+      return {
+        kind: DeviceWireResultType.Success,
+        name: this.fullName,
+      }
+    }
+
+    // Caseta/RA3 uses occupancy groups
     const router = OccupancySensorRouter.getInstance()
     await router.register(this.bridge, area.Area.AssociatedOccupancyGroups[0], this.update.bind(this))
 

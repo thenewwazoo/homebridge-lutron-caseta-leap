@@ -20,6 +20,7 @@ import {
   SmartBridge,
 } from 'lutron-leap'
 
+import { ButtonDiscoveryService } from './ButtonDiscoveryService.js'
 import { OccupancySensor } from './OccupancySensor.js'
 import { PicoRemote } from './PicoRemote.js'
 import { SerenaTiltOnlyWoodBlinds } from './SerenaTiltOnlyWoodBlinds.js'
@@ -37,6 +38,7 @@ export interface GlobalOptions {
   clickSpeedLong: 'quick' | 'default' | 'relaxed' | 'disabled'
   clickSpeedDouble: 'quick' | 'default' | 'relaxed' | 'disabled'
   logSSLKeyDangerous: boolean
+  clearDiscoveredButtons: boolean
 }
 
 interface BridgeAuthEntry {
@@ -69,6 +71,33 @@ export interface WireError {
   reason: string
 }
 
+/**
+ * Sanitize a name for HomeKit compatibility.
+ * HomeKit requires names to start and end with a letter or number,
+ * and only allows certain characters. This function is intentionally
+ * permissive to avoid changing existing Caseta device names while
+ * handling QSX names that may contain problematic characters.
+ */
+export function sanitizeHomeKitName(name: string): string {
+  // Trim whitespace first
+  let sanitized = name.trim()
+  // Remove control characters and characters known to be rejected by HomeKit
+  // Keep letters, numbers, spaces, hyphens, periods, parentheses,
+  // ampersand, single quotes, commas, slashes, and other common punctuation
+  sanitized = sanitized.replace(/[^\p{L}\p{N}\s\-_.,'&()/:!]/gu, '')
+  // Collapse multiple spaces into one
+  sanitized = sanitized.replace(/\s+/g, ' ').trim()
+  // Remove non-alphanumeric characters from the start
+  sanitized = sanitized.replace(/^[^\p{L}\p{N}]+/u, '')
+  // Remove non-alphanumeric characters from the end
+  sanitized = sanitized.replace(/[^\p{L}\p{N}]+$/u, '')
+  // If the name is now empty, provide a fallback
+  if (sanitized.length === 0) {
+    sanitized = 'Unknown Device'
+  }
+  return sanitized
+}
+
 export class LutronCasetaLeap
   extends (EventEmitter as new () => TypedEmitter<PlatformEvents>)
   implements DynamicPlatformPlugin {
@@ -77,6 +106,7 @@ export class LutronCasetaLeap
   private options: GlobalOptions
   private secrets: Map<string, BridgeAuthEntry>
   private bridgeMgr: Map<string, SmartBridge> = new Map()
+  public readonly buttonDiscoveryService: ButtonDiscoveryService
 
   constructor(public readonly log: Logging, public readonly config: PlatformConfig, public readonly api: API) {
     super()
@@ -87,6 +117,23 @@ export class LutronCasetaLeap
 
     this.options = this.optionsFromConfig(config)
     this.secrets = this.secretsFromConfig(config)
+
+    // Initialize button discovery service for persistence
+    this.buttonDiscoveryService = new ButtonDiscoveryService(api, log)
+
+    // Handle clear option if requested
+    if (this.options.clearDiscoveredButtons) {
+      log.warn('Clearing all discovered button data as requested (clearDiscoveredButtons option)')
+      this.buttonDiscoveryService.clear()
+      log.warn('Remember to set clearDiscoveredButtons back to false after restart')
+    } else {
+      // Log stats about persisted buttons
+      const stats = this.buttonDiscoveryService.getStats()
+      if (stats.total > 0) {
+        log.debug(`[ButtonDiscovery] ${stats.total} persisted buttons available (${stats.bySource.probe} probed, ${stats.bySource.press} press-discovered)`)
+      }
+    }
+
     if (this.secrets.size === 0) {
       log.warn('No bridge auth configured. Retiring.')
       return
@@ -141,6 +188,7 @@ export class LutronCasetaLeap
         clickSpeedDouble: 'default',
         clickSpeedLong: 'default',
         logSSLKeyDangerous: false,
+        clearDiscoveredButtons: false,
       },
       config.options,
     )
@@ -237,8 +285,12 @@ export class LutronCasetaLeap
 
   private processAllDevices(bridge: SmartBridge) {
     bridge.getDeviceInfo().then(async (devices: DeviceDefinition[]) => {
+      // Merge QSX keypads with the same name (2-gang keypads)
+      // These are reported as separate devices but should be a single HomeKit accessory
+      const mergedDevices = this.mergeMultiGangKeypads(devices)
+
       const results: PromiseSettledResult<string>[] = await Promise.allSettled(
-        devices.map((device: DeviceDefinition) => this.processDevice(bridge, device)),
+        mergedDevices.map((device: DeviceDefinition) => this.processDevice(bridge, device)),
       )
       for (const result of results) {
         switch (result.status) {
@@ -257,8 +309,76 @@ export class LutronCasetaLeap
     bridge.on('unsolicited', this.handleUnsolicitedMessage.bind(this))
   }
 
+  /**
+   * Merge QSX keypads that have the same FullyQualifiedName into a single logical device.
+   * This handles 2-gang (or more) keypads where Lutron reports each physical keypad as a
+   * separate device, but they should be presented as a single accessory in HomeKit.
+   *
+   * The merged device will have all device hrefs from all constituent devices,
+   * stored in a _mergedDeviceHrefs property. PicoRemote will fetch button groups
+   * from each device href separately (since ButtonGroups array is empty at discovery time).
+   */
+  private mergeMultiGangKeypads(devices: DeviceDefinition[]): DeviceDefinition[] {
+    // QSX keypad types that can be part of multi-gang setups
+    const MERGEABLE_DEVICE_TYPES = new Set(['PalladiomKeypad', 'SeeTouchTabletopKeypad'])
+
+    // Group mergeable devices by their FullyQualifiedName
+    const devicesByName = new Map<string, DeviceDefinition[]>()
+    const nonMergeableDevices: DeviceDefinition[] = []
+
+    for (const device of devices) {
+      if (MERGEABLE_DEVICE_TYPES.has(device.DeviceType)) {
+        const nameKey = device.FullyQualifiedName.join(' ')
+        if (!devicesByName.has(nameKey)) {
+          devicesByName.set(nameKey, [])
+        }
+        devicesByName.get(nameKey)!.push(device)
+      } else {
+        nonMergeableDevices.push(device)
+      }
+    }
+
+    // Process each group
+    const result: DeviceDefinition[] = [...nonMergeableDevices]
+
+    for (const [nameKey, group] of devicesByName) {
+      if (group.length === 1) {
+        // Single device, no merging needed
+        result.push(group[0])
+      } else {
+        // Multiple devices with same name - merge them
+        this.log.debug(
+          `Merging ${group.length} keypads with name "${nameKey}" into single accessory `
+          + `(serial numbers: ${group.map(d => d.SerialNumber).join(', ')})`,
+        )
+
+        // Use the first device as the primary
+        const primaryDevice = group[0]
+
+        // Store all device hrefs - we'll fetch button groups from each during initialization
+        // (ButtonGroups array is empty at discovery time for QSX devices)
+        const allDeviceHrefs: string[] = group.map(d => d.href)
+
+        // Create a merged device based on the primary
+        const mergedDevice = {
+          ...primaryDevice,
+          _mergedDeviceHrefs: allDeviceHrefs,
+          _mergedSerialNumbers: group.map(d => d.SerialNumber),
+        } as DeviceDefinition
+
+        this.log.debug(
+          `Merged device has ${allDeviceHrefs.length} physical device(s): ${allDeviceHrefs.join(', ')}`,
+        )
+
+        result.push(mergedDevice)
+      }
+    }
+
+    return result
+  }
+
   async processDevice(bridge: SmartBridge, d: DeviceDefinition): Promise<string> {
-    const fullName = d.FullyQualifiedName.join(' ')
+    const fullName = sanitizeHomeKitName(d.FullyQualifiedName.join(' '))
     const uuid = this.api.hap.uuid.generate(d.SerialNumber.toString())
 
     let accessory: PlatformAccessory | undefined = this.accessories.get(uuid)
@@ -305,7 +425,7 @@ export class LutronCasetaLeap
     bridge: SmartBridge,
     device: DeviceDefinition,
   ): Promise<DeviceWireResult> {
-    const fullName = device.FullyQualifiedName.join(' ')
+    const fullName = sanitizeHomeKitName(device.FullyQualifiedName.join(' '))
     accessory.context.device = device
     accessory.context.bridgeID = bridge.bridgeID
 
@@ -338,7 +458,9 @@ export class LutronCasetaLeap
       case 'Pico4Button2Group':
       case 'Pico4ButtonScene':
       case 'Pico4ButtonZone':
-      case 'PaddleSwitchPico': {
+      case 'PaddleSwitchPico':
+      case 'PalladiomKeypad': // QSX keypads (dynamic button mapping)
+      case 'SeeTouchTabletopKeypad': {
         this.log.info(`Found a ${device.DeviceType} remote ${fullName}`)
 
         // SIDE EFFECT: this constructor mutates the accessory object
@@ -347,7 +469,8 @@ export class LutronCasetaLeap
       }
 
       // occupancy sensors
-      case 'RPSOccupancySensor': {
+      case 'RPSOccupancySensor':
+      case 'RPSCeilingMountedOccupancySensor': {
         this.log.info(`Found a ${device.DeviceType} occupancy sensor ${fullName}`)
 
         const sensor = new OccupancySensor(this, accessory, bridge)
@@ -367,7 +490,7 @@ export class LutronCasetaLeap
       default:
         return Promise.resolve({
           kind: DeviceWireResultType.Skipped,
-          reason: `Device type ${device.DeviceType} not supported by this plugin`,
+          reason: `${fullName}: Device type ${device.DeviceType} not supported by this plugin`,
         })
     }
   }

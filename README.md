@@ -14,15 +14,16 @@
 
 </span>
 
-This is a plugin that interfaces between Homebridge (and HomeKit) and the [Lutron Caséta Smart Bridge](https://www.casetawireless.com/products/expansion-kits-and-smart-bridge). Specifically, this adds support for:
+This is a plugin that interfaces between Homebridge (and HomeKit) and Lutron smart lighting systems including the [Lutron Caséta Smart Bridge](https://www.casetawireless.com/products/expansion-kits-and-smart-bridge) and [Lutron HomeWorks QSX processors](https://www.lutron.com/en-US/Products/Pages/WholeHomeSystems/HomeWorksQS/Overview.aspx). Specifically, this adds support for:
 
-- [Serena Smart Wood Blinds](https://www.serenashades.com) (optionally),
+- [Serena Smart Wood Blinds](https://www.serenashades.com) (optionally)
 - [Pico Remotes](https://www.lutron.com/en-US/Products/Pages/Components/PicoWirelessController/Models.aspx)
 - Caseta Occupancy Sensors
+- HomeWorks QSX Occupancy Sensors (RPS ceiling-mounted sensors)
 
 Because HomeKit control for dimmers and switches, etc, are natively supported by the Smart Bridge, this plugin doesn't implement them. If you want to help out and add support, please see the [To-do and contributions](#to-do-and-contributions) section at the bottom of this document. Serena Smart Wood Blinds support in this plugin can be disabled.
 
-This plugin makes use of the [lutron-leap-js](https://github.com/thenewwazoo/lutron-leap-js) library, which implements the Lutron LEAP protocol, used by the Lutron mobile apps and third-party integrations. It has been tested with the non-Pro and Pro bridges, and may also be able to work with RA2 (but has not been tested).
+This plugin makes use of the [lutron-leap-js](https://github.com/thenewwazoo/lutron-leap-js) library, which implements the Lutron LEAP protocol, used by the Lutron mobile apps and third-party integrations. It has been tested with the non-Pro and Pro bridges, HomeWorks QSX processors (HQP7-2), and may also be able to work with RA2 (but has not been tested).
 
 ## 🧧 Support and Donations
 
@@ -69,6 +70,18 @@ When this plugin was written, Lutron did not support the Serena Tilt-Only Wood B
 This lets you set the speed with which you must click buttons in order to trigger a double- or a long-press of a button. The default should be comfortable for most modern computer users. My hope is that slow and fast are better for some users. If you find they do not work for you, please let me know!
 
 These features can also be disabled individually in the settings. This can improve responsiveness to the remaining types of presses. **The configuration options in HomeKit do not change, but the plug-in will ignore disabled press types.**
+
+### HomeWorks QSX Processors
+
+This plugin supports Lutron HomeWorks QSX processors for occupancy sensors and Pico remotes. QSX processors use a different architecture than Caseta bridges:
+
+- **Device Discovery**: QSX devices are discovered via area crawling (requires lutron-leap v3.5.0+)
+- **Occupancy Sensors**: Tracked via area-level status rather than occupancy groups
+- **Supported Sensors**: `RPSCeilingMountedOccupancySensor` devices
+
+**Note**: Dimmer and switch support is not currently implemented for QSX systems. Dimmers and switches are natively supported by HomeKit on Caseta bridges, but QSX dimmers require additional implementation work. This is a potential future enhancement.
+
+For QSX pairing instructions, use the same certificate-based authentication as Caseta bridges. See the [Legacy Configuration](#-legacy-configuration) section for details on obtaining certificates using the `get_lutron_cert.py` script.
 
 ## 🏄 User Information
 

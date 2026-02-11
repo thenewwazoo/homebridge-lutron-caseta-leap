@@ -32,6 +32,12 @@
               { "title": "Medium (default)", "enum": ["medium"] },
               { "title": "Slow", "enum": ["slow"] }
             ]
+          },
+          "clearDiscoveredButtons": {
+            "type": "boolean",
+            "title": "Clear Discovered Buttons",
+            "description": "Clear all persisted button data on next restart. Useful for troubleshooting. Remember to set back to false after restart.",
+            "default": false
           }
 
         }
@@ -73,6 +79,12 @@
           "key": "options.clickSpeed",
           "notitle": false,
           "type": "string",
+          "flex": "1 1 150px"
+        },
+        {
+          "key": "options.clearDiscoveredButtons",
+          "notitle": false,
+          "type": "boolean",
           "flex": "1 1 150px"
         }
       ]

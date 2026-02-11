@@ -9,6 +9,8 @@ import type { DeviceDefinition, OneZoneStatus, Response, SmartBridge } from 'lut
 
 import type { LutronCasetaLeap } from './platform.js'
 
+import { sanitizeHomeKitName } from './platform.js'
+
 export class SerenaTiltOnlyWoodBlinds {
   private service: Service
   private device: DeviceDefinition
@@ -24,8 +26,8 @@ export class SerenaTiltOnlyWoodBlinds {
       .getService(this.platform.api.hap.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.api.hap.Characteristic.Manufacturer, 'Lutron Electronics Co., Inc')
       .setCharacteristic(this.platform.api.hap.Characteristic.Model, this.device.ModelNumber)
-      .setCharacteristic(this.platform.api.hap.Characteristic.Name, this.device.FullyQualifiedName.join(' '))
-      .setCharacteristic(this.platform.api.hap.Characteristic.ConfiguredName, this.device.FullyQualifiedName.join(' '))
+      .setCharacteristic(this.platform.api.hap.Characteristic.Name, sanitizeHomeKitName(this.device.FullyQualifiedName.join(' ')))
+      .setCharacteristic(this.platform.api.hap.Characteristic.ConfiguredName, sanitizeHomeKitName(this.device.FullyQualifiedName.join(' ')))
       .setCharacteristic(this.platform.api.hap.Characteristic.SerialNumber, this.device.SerialNumber.toString())
 
     this.service
@@ -34,7 +36,7 @@ export class SerenaTiltOnlyWoodBlinds {
 
     this.service.setCharacteristic(
       this.platform.api.hap.Characteristic.Name,
-      this.device.FullyQualifiedName.join(' '),
+      sanitizeHomeKitName(this.device.FullyQualifiedName.join(' ')),
     )
 
     // create handlers for required characteristics
