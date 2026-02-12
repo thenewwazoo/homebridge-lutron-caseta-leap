@@ -60,14 +60,18 @@ const LONG_PRESS_TIMEOUT_MS = new Map<string, number>([
 // unaffected.
 const UP_DOWN_BTN_DELAY_MS = 250
 
-// Timeout to detect "Press-only" buttons (like QSX shades buttons)
-// that send Press but never send Release for short presses.
-// This should be longer than the double-press window to allow double-tap detection.
-// We'll use the double-press timeout value dynamically instead of a fixed value.
+// On QSX hubs, some buttons send only Press without Release, LongHold, or
+// MultiTap. For these "press-only" buttons, the idle timer after Press should
+// fire a short press (not a long press). Long presses on QSX are signaled by
+// LongHold events from the hub. On Caseta/RA3, buttons always send Release,
+// so the idle timer correctly fires a long press (user held past the threshold).
+//
+// The isPressOnlyButton flag controls this: when true, the timer fires at
+// doublePressTimeout with a short press; when false, at longPressTimeout with
+// a long press. This eliminates the need for a separate pressOnlyTimer.
 
 export class ButtonTracker {
   private timer: ReturnType<typeof setTimeout> | null
-  private pressOnlyTimer: ReturnType<typeof setTimeout> | null = null
   private state: ButtonState = ButtonState.IDLE
 
   private longPressTimeout?: number
@@ -82,13 +86,15 @@ export class ButtonTracker {
     private longPressCB: () => void,
     private log: Logging,
     private href: string,
-        clickSpeedDouble = 'default',
-        clickSpeedLong = 'default',
-        isUpDownButton = false,
-        private engravingText?: string,
-        private isPressOnlyButton = false,
+    clickSpeedDouble = 'default',
+    clickSpeedLong = 'default',
+    isUpDownButton = false,
+    private engravingText?: string,
+    private isPressOnlyButton = false,
   ) {
-    log.debug(`btrk ${this.href} created speed ${clickSpeedDouble} dbl ${clickSpeedLong} long`)
+    log.debug(
+      `btrk ${this.href} created speed ${clickSpeedDouble} dbl ${clickSpeedLong} long`,
+    )
 
     this.timer = null
 
@@ -130,15 +136,13 @@ export class ButtonTracker {
       clearTimeout(this.timer)
     }
     this.timer = null
-    if (this.pressOnlyTimer) {
-      clearTimeout(this.pressOnlyTimer)
-    }
-    this.pressOnlyTimer = null
     this.log.debug('btrk reset to IDLE')
   }
 
   public update(action: string) {
-    this.log.debug(`btrk ${this.href} got event ${action} in state ${this.state}`)
+    this.log.debug(
+      `btrk ${this.href} got event ${action} in state ${this.state}`,
+    )
 
     // TODO this state machine is ill-formed, and relies on `this.timer`
     // implicitly being included in state decisions. refactor so the timer
@@ -169,25 +173,31 @@ export class ButtonTracker {
       case ButtonState.IDLE: {
         if (action === 'Press') {
           this.state = ButtonState.DOWN
-          if (this.longPressDisabled) {
-            this.log.info(`${this.buttonName} long press disabled. suppressing.`)
-          } else {
-            this.timer = setTimeout(longPressTimeoutHandler, this.longPressTimeout)
-          }
-          // For QSX shades buttons that send Press but no Release,
-          // set a timer to detect this case. Only for buttons known to be
-          // press-only (shades buttons) — normal Caseta buttons always send Release.
           if (this.isPressOnlyButton) {
-            this.pressOnlyTimer = setTimeout(() => {
-              // If we're still in DOWN state and haven't received Release or a second Press,
-              // this is a "Press-only" button (like shades) with a single press
+            // QSX: Press without Release/LongHold = short press.
+            // Use doublePressTimeout so double-taps (Press+Press) are still detected.
+            this.timer = setTimeout(() => {
               if (this.state === ButtonState.DOWN) {
-                this.log.debug(`btrk ${this.href} no Release/second Press after Press, treating as single press (QSX shades button)`)
+                this.log.debug(
+                  `btrk ${this.href} no Release/LongHold after Press, treating as single press (QSX Press-only)`,
+                )
                 this.reset()
-                this.log.info(`${this.buttonName} got a short press (QSX Press-only)`)
+                this.log.info(
+                  `${this.buttonName} got a short press (QSX Press-only)`,
+                )
                 this.shortPressCB()
               }
             }, this.doublePressTimeout)
+          } else if (this.longPressDisabled) {
+            this.log.info(
+              `${this.buttonName} long press disabled. suppressing.`,
+            )
+          } else {
+            // Caseta/RA3: Press without Release for longPressTimeout = long press
+            this.timer = setTimeout(
+              longPressTimeoutHandler,
+              this.longPressTimeout,
+            )
           }
           this.log.debug(`btrk ${this.href} now in state DOWN`)
         } else if (action === 'Release') {
@@ -200,13 +210,17 @@ export class ButtonTracker {
             this.reset()
             this.shortPressCB()
           }, this.doublePressTimeout)
-          this.log.debug(`btrk ${this.href} QSX Release, waiting for potential MultiTap`)
+          this.log.debug(
+            `btrk ${this.href} QSX Release, waiting for potential MultiTap`,
+          )
         } else if (action === 'LongHold') {
           // QSX sends LongHold for long presses
           // Transition to LONG_HOLD state to ignore the subsequent Release
           this.state = ButtonState.LONG_HOLD
           if (this.longPressDisabled) {
-            this.log.info(`${this.buttonName} long press disabled. suppressing.`)
+            this.log.info(
+              `${this.buttonName} long press disabled. suppressing.`,
+            )
           } else {
             this.log.info(`${this.buttonName} got a long press (QSX LongHold)`)
             this.longPressCB()
@@ -220,9 +234,13 @@ export class ButtonTracker {
           }
           this.reset()
           if (this.doublePressDisabled) {
-            this.log.info(`${this.buttonName} double press disabled. suppressing.`)
+            this.log.info(
+              `${this.buttonName} double press disabled. suppressing.`,
+            )
           } else {
-            this.log.info(`${this.buttonName} got a double press (QSX MultiTap)`)
+            this.log.info(
+              `${this.buttonName} got a double press (QSX MultiTap)`,
+            )
             this.doublePressCB()
           }
         } else {
@@ -237,13 +255,7 @@ export class ButtonTracker {
           this.state = ButtonState.UP
           if (this.timer) {
             clearTimeout(this.timer)
-            this.log.debug(`btrk ${this.href} cleared long press timer`)
-          }
-          // Cancel the press-only timer since we got a proper Release
-          if (this.pressOnlyTimer) {
-            clearTimeout(this.pressOnlyTimer)
-            this.pressOnlyTimer = null
-            this.log.debug(`btrk ${this.href} cleared press-only timer`)
+            this.log.debug(`btrk ${this.href} cleared press timer`)
           }
           this.timer = setTimeout(() => {
             doublePressTimeoutHandler()
@@ -251,36 +263,44 @@ export class ButtonTracker {
           this.log.debug(`btrk ${this.href} now in UP state`)
         } else if (action === 'LongHold') {
           // QSX sends LongHold during a long press, even for buttons that send Press first
-          // Cancel all timers and fire long press
+          // Cancel timer and fire long press
           if (this.timer) {
             clearTimeout(this.timer)
           }
-          if (this.pressOnlyTimer) {
-            clearTimeout(this.pressOnlyTimer)
-            this.pressOnlyTimer = null
-          }
           this.state = ButtonState.LONG_HOLD
           if (this.longPressDisabled) {
-            this.log.info(`${this.buttonName} long press disabled. suppressing.`)
+            this.log.info(
+              `${this.buttonName} long press disabled. suppressing.`,
+            )
           } else {
-            this.log.info(`${this.buttonName} got a long press (QSX LongHold in DOWN)`)
+            this.log.info(
+              `${this.buttonName} got a long press (QSX LongHold in DOWN)`,
+            )
             this.longPressCB()
           }
         } else if (action === 'Press') {
-          // For QSX shades buttons: a second Press while in DOWN state means double-tap
-          // (shades buttons send Press, Press for double-tap instead of MultiTap)
-          this.log.debug(`btrk ${this.href} second Press in DOWN state - treating as double-tap (QSX shades button)`)
+          // For QSX Press-only buttons: a second Press while in DOWN state means double-tap
+          // (these buttons send Press, Press for double-tap instead of MultiTap)
+          this.log.debug(
+            `btrk ${this.href} second Press in DOWN state - treating as double-tap (QSX Press+Press)`,
+          )
           this.reset()
 
           if (this.doublePressDisabled) {
-            this.log.info(`${this.buttonName} double press disabled. suppressing.`)
+            this.log.info(
+              `${this.buttonName} double press disabled. suppressing.`,
+            )
             return
           }
 
-          this.log.info(`${this.buttonName} got a double press (QSX Press+Press)`)
+          this.log.info(
+            `${this.buttonName} got a double press (QSX Press+Press)`,
+          )
           this.doublePressCB()
         } else {
-          this.log.error(`btrk invalid action ${action} for state ${this.state}. resetting`)
+          this.log.error(
+            `btrk invalid action ${action} for state ${this.state}. resetting`,
+          )
           this.reset()
         }
         break
@@ -293,7 +313,9 @@ export class ButtonTracker {
           this.reset()
 
           if (this.doublePressDisabled) {
-            this.log.info(`${this.buttonName} double press disabled. suppressing.`)
+            this.log.info(
+              `${this.buttonName} double press disabled. suppressing.`,
+            )
             return
           }
 
@@ -302,11 +324,15 @@ export class ButtonTracker {
         } else if (action === 'MultiTap') {
           // QSX sends MultiTap after Release for double-taps
           // Cancel the pending short press timer and fire double press
-          this.log.debug(`btrk ${this.href} got MultiTap in UP state, canceling pending short press`)
+          this.log.debug(
+            `btrk ${this.href} got MultiTap in UP state, canceling pending short press`,
+          )
           this.reset()
 
           if (this.doublePressDisabled) {
-            this.log.info(`${this.buttonName} double press disabled. suppressing.`)
+            this.log.info(
+              `${this.buttonName} double press disabled. suppressing.`,
+            )
             return
           }
 
@@ -314,9 +340,13 @@ export class ButtonTracker {
           this.doublePressCB()
         } else if (action === 'Release') {
           // QSX may send additional Release events, ignore them
-          this.log.debug(`btrk ${this.href} ignoring additional Release in UP state`)
+          this.log.debug(
+            `btrk ${this.href} ignoring additional Release in UP state`,
+          )
         } else {
-          this.log.debug(`btrk ${this.href} unexpected action ${action} in UP state, resetting`)
+          this.log.debug(
+            `btrk ${this.href} unexpected action ${action} in UP state, resetting`,
+          )
           this.reset()
         }
         break
@@ -326,10 +356,14 @@ export class ButtonTracker {
         // After QSX LongHold, we're waiting for Release to complete
         // Just reset to IDLE without firing anything
         if (action === 'Release') {
-          this.log.debug(`btrk ${this.href} Release after LongHold, resetting to IDLE`)
+          this.log.debug(
+            `btrk ${this.href} Release after LongHold, resetting to IDLE`,
+          )
           this.reset()
         } else {
-          this.log.debug(`btrk ${this.href} unexpected action ${action} in LONG_HOLD state, resetting`)
+          this.log.debug(
+            `btrk ${this.href} unexpected action ${action} in LONG_HOLD state, resetting`,
+          )
           this.reset()
         }
         break

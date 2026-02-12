@@ -1,8 +1,17 @@
 import type { Characteristic, PlatformAccessory, Service } from 'homebridge'
-import type { ButtonDefinition, OneButtonStatusEvent, Response, SmartBridge } from 'lutron-leap'
+import type {
+  ButtonDefinition,
+  OneButtonStatusEvent,
+  Response,
+  SmartBridge,
+} from 'lutron-leap'
 
 import type { DiscoveredButton } from './ButtonDiscoveryService.js'
-import type { DeviceWireResult, GlobalOptions, LutronCasetaLeap } from './platform.js'
+import type {
+  DeviceWireResult,
+  GlobalOptions,
+  LutronCasetaLeap,
+} from './platform.js'
 
 import { inspect } from 'node:util'
 
@@ -32,9 +41,14 @@ const SHADES_BUTTON_KEYWORDS = [
   'curtains',
 ]
 
-function isShadesButton(buttonName: string, engravingText: string | undefined): boolean {
+function isShadesButton(
+  buttonName: string,
+  engravingText: string | undefined,
+): boolean {
   const textToCheck = `${buttonName} ${engravingText || ''}`.toLowerCase()
-  return SHADES_BUTTON_KEYWORDS.some(keyword => textToCheck.includes(keyword))
+  return SHADES_BUTTON_KEYWORDS.some(keyword =>
+    textToCheck.includes(keyword),
+  )
 }
 
 // This maps DeviceType and ButtonNumber to human-readable labels and
@@ -50,7 +64,10 @@ function isShadesButton(buttonName: string, engravingText: string | undefined): 
 //         ...
 //     ]),
 // ]
-const BUTTON_MAP = new Map<string, Map<number, { label: string, index: number, isUpDown: boolean }>>([
+const BUTTON_MAP = new Map<
+  string,
+  Map<number, { label: string, index: number, isUpDown: boolean }>
+>([
   [
     'Pico2Button',
     new Map([
@@ -152,16 +169,19 @@ export class PicoRemote {
     private readonly accessory: PlatformAccessory,
     private readonly bridge: SmartBridge,
     private readonly options: GlobalOptions,
-  ) { }
+  ) {}
 
   public async initialize(): Promise<DeviceWireResult> {
-    const fullName = sanitizeHomeKitName(this.accessory.context.device.FullyQualifiedName.join(' '))
+    const fullName = sanitizeHomeKitName(
+      this.accessory.context.device.FullyQualifiedName.join(' '),
+    )
 
     // Check if this is a merged device (2-gang keypad)
     // These properties are added by platform.mergeMultiGangKeypads() for merged devices
     const device = this.accessory.context.device as any
     const mergedDeviceHrefs: string[] | undefined = device._mergedDeviceHrefs
-    const mergedSerialNumbers: number[] | undefined = device._mergedSerialNumbers
+    const mergedSerialNumbers: number[] | undefined
+      = device._mergedSerialNumbers
     const isMergedDevice = mergedDeviceHrefs && mergedDeviceHrefs.length > 1
 
     if (isMergedDevice) {
@@ -173,21 +193,31 @@ export class PicoRemote {
 
     this.accessory
       .getService(this.platform.api.hap.Service.AccessoryInformation)!
-      .setCharacteristic(this.platform.api.hap.Characteristic.Manufacturer, 'Lutron Electronics Co., Inc')
-      .setCharacteristic(this.platform.api.hap.Characteristic.Model, this.accessory.context.device.ModelNumber)
+      .setCharacteristic(
+        this.platform.api.hap.Characteristic.Manufacturer,
+        'Lutron Electronics Co., Inc',
+      )
+      .setCharacteristic(
+        this.platform.api.hap.Characteristic.Model,
+        this.accessory.context.device.ModelNumber,
+      )
       .setCharacteristic(this.platform.api.hap.Characteristic.Name, fullName)
-      .setCharacteristic(this.platform.api.hap.Characteristic.ConfiguredName, fullName)
+      .setCharacteristic(
+        this.platform.api.hap.Characteristic.ConfiguredName,
+        fullName,
+      )
       .setCharacteristic(
         this.platform.api.hap.Characteristic.SerialNumber,
         this.accessory.context.device.SerialNumber.toString(),
       )
 
     const label_svc
-            = this.accessory.getService(this.platform.api.hap.Service.ServiceLabel)
-              || this.accessory.addService(this.platform.api.hap.Service.ServiceLabel)
+      = this.accessory.getService(this.platform.api.hap.Service.ServiceLabel)
+        || this.accessory.addService(this.platform.api.hap.Service.ServiceLabel)
     label_svc.setCharacteristic(
       this.platform.api.hap.Characteristic.ServiceLabelNamespace,
-      this.platform.api.hap.Characteristic.ServiceLabelNamespace.ARABIC_NUMERALS, // ha ha
+      this.platform.api.hap.Characteristic.ServiceLabelNamespace
+        .ARABIC_NUMERALS, // ha ha
     )
     this.labelService = label_svc
 
@@ -232,30 +262,49 @@ export class PicoRemote {
     try {
       // For merged devices, fetch button groups from each physical device
       if (isMergedDevice) {
-        this.platform.log.debug(`${fullName}: Fetching button groups from ${mergedDeviceHrefs!.length} merged devices...`)
+        this.platform.log.debug(
+          `${fullName}: Fetching button groups from ${mergedDeviceHrefs!.length} merged devices...`,
+        )
         // Fetch button groups from each merged device and combine them
         const allBgs = await Promise.all(
           mergedDeviceHrefs!.map(async (deviceHref) => {
-            this.platform.log.debug(`${fullName}: Fetching button groups from device ${deviceHref}...`)
-            const deviceBgs = await this.bridge.getButtonGroupsFromDeviceHref(deviceHref)
-            this.platform.log.debug(`${fullName}: Device ${deviceHref} has ${deviceBgs.length} button group(s)`)
+            this.platform.log.debug(
+              `${fullName}: Fetching button groups from device ${deviceHref}...`,
+            )
+            const deviceBgs
+              = await this.bridge.getButtonGroupsFromDeviceHref(deviceHref)
+            this.platform.log.debug(
+              `${fullName}: Device ${deviceHref} has ${deviceBgs.length} button group(s)`,
+            )
             return deviceBgs
           }),
         )
         bgs = allBgs.flat()
-        this.platform.log.debug(`${fullName}: Total from all merged devices: ${bgs.length} button group(s)`)
+        this.platform.log.debug(
+          `${fullName}: Total from all merged devices: ${bgs.length} button group(s)`,
+        )
       } else {
-        bgs = await this.bridge.getButtonGroupsFromDevice(this.accessory.context.device)
+        bgs = await this.bridge.getButtonGroupsFromDevice(
+          this.accessory.context.device,
+        )
       }
-      this.platform.log.debug(`${fullName}: Found ${bgs.length} button group(s)`)
+      this.platform.log.debug(
+        `${fullName}: Found ${bgs.length} button group(s)`,
+      )
       // Debug: log button group hrefs
       for (const bg of bgs) {
         if (!(bg instanceof ExceptionDetail)) {
-          this.platform.log.debug(`${fullName}: Button group href=${bg.href}, has Buttons array=${!!bg.Buttons}, length=${bg.Buttons?.length || 0}`)
+          this.platform.log.debug(
+            `${fullName}: Button group href=${bg.href}, has Buttons array=${!!bg.Buttons}, length=${bg.Buttons?.length || 0}`,
+          )
         }
       }
     } catch (e) {
-      this.platform.log.error('Failed to get button group(s) belonging to', fullName, e)
+      this.platform.log.error(
+        'Failed to get button group(s) belonging to',
+        fullName,
+        e,
+      )
       return {
         kind: DeviceWireResultType.Error,
         reason: `Failed to get button group(s) belonging to ${fullName}: ${e}`,
@@ -272,14 +321,21 @@ export class PicoRemote {
     // For merged devices, pre-populate the button cache for ALL device hrefs
     // This ensures buttons can be found even if they're on a different device than the buttongroup's Parent
     if (isMergedDevice && mergedDeviceHrefs && mergedDeviceHrefs.length > 1) {
-      this.platform.log.debug(`${fullName}: Pre-populating button cache for ${mergedDeviceHrefs.length} merged devices...`)
+      this.platform.log.debug(
+        `${fullName}: Pre-populating button cache for ${mergedDeviceHrefs.length} merged devices...`,
+      )
       await this.bridge.prePopulateButtonCacheForDevices(mergedDeviceHrefs)
-      this.platform.log.debug(`${fullName}: Button cache pre-population complete`)
+      this.platform.log.debug(
+        `${fullName}: Button cache pre-population complete`,
+      )
     }
 
     // if there are any buttongroups that are already associated in the
     // lutron app, and we've been told to skip them, return early.
-    if (bgs.some(bg => bg.AffectedZones !== undefined) && this.options.filterPico) {
+    if (
+      bgs.some(bg => bg.AffectedZones !== undefined)
+      && this.options.filterPico
+    ) {
       return {
         kind: DeviceWireResultType.Skipped,
         reason: 'Associated with a device outside HomeKit',
@@ -302,24 +358,40 @@ export class PicoRemote {
       for (const bg of bgs) {
         try {
           // Debug: log the buttongroup's Parent to understand QSX structure
-          const parentInfo = bg.Parent ? ((bg.Parent as { href?: string }).href || JSON.stringify(bg.Parent)) : 'undefined'
-          this.platform.log.debug(`${fullName}: ButtonGroup ${bg.href} has Parent: ${parentInfo}`)
-          this.platform.log.debug(`${fullName}: Querying buttons for button group ${bg.href}...`)
+          const parentInfo = bg.Parent
+            ? (bg.Parent as { href?: string }).href || JSON.stringify(bg.Parent)
+            : 'undefined'
+          this.platform.log.debug(
+            `${fullName}: ButtonGroup ${bg.href} has Parent: ${parentInfo}`,
+          )
+          this.platform.log.debug(
+            `${fullName}: Querying buttons for button group ${bg.href}...`,
+          )
           const bgButtons = await this.bridge.getButtonsFromGroup(bg)
-          this.platform.log.debug(`${fullName}: Button group ${bg.href} returned ${bgButtons.length} button(s)`)
+          this.platform.log.debug(
+            `${fullName}: Button group ${bg.href} returned ${bgButtons.length} button(s)`,
+          )
           if (bgButtons.length > 0) {
-            this.platform.log.debug(`${fullName}: First button: ${JSON.stringify(bgButtons[0])}`)
+            this.platform.log.debug(
+              `${fullName}: First button: ${JSON.stringify(bgButtons[0])}`,
+            )
           }
           buttons = buttons.concat(bgButtons)
         } catch (e) {
-          this.platform.log.error('Failed to get buttons from button group', bg.href, e)
+          this.platform.log.error(
+            'Failed to get buttons from button group',
+            bg.href,
+            e,
+          )
           return {
             kind: DeviceWireResultType.Error,
             reason: `Failed to get buttons from button group ${bg.href}: ${e}`,
           }
         }
       }
-      this.platform.log.debug(`${fullName}: Total buttons found: ${buttons.length}`)
+      this.platform.log.debug(
+        `${fullName}: Total buttons found: ${buttons.length}`,
+      )
     }
 
     // Check for synthetic (fallback) buttons mixed with real buttons
@@ -350,8 +422,12 @@ export class PicoRemote {
 
     // Sort buttons by their ButtonNumber for consistent ordering
     // and log all button numbers to help debug numbering issues
-    const buttonNumbers = buttons.map(b => b.ButtonNumber).sort((a, b) => a - b)
-    this.platform.log.debug(`${fullName}: Button numbers from API: [${buttonNumbers.join(', ')}]`)
+    const buttonNumbers = buttons
+      .map(b => b.ButtonNumber)
+      .sort((a, b) => a - b)
+    this.platform.log.debug(
+      `${fullName}: Button numbers from API: [${buttonNumbers.join(', ')}]`,
+    )
 
     // Track which service subtypes we're using for this device
     const activeSubtypes = new Set<string>()
@@ -359,7 +435,9 @@ export class PicoRemote {
     // Create a sequential index map for buttons (1, 2, 3, 4...) regardless of API ButtonNumber gaps
     // Use button.href as key (not ButtonNumber) because merged devices can have multiple buttons
     // with the same ButtonNumber from different physical devices
-    const sortedButtons = [...buttons].sort((a, b) => a.ButtonNumber - b.ButtonNumber)
+    const sortedButtons = [...buttons].sort(
+      (a, b) => a.ButtonNumber - b.ButtonNumber,
+    )
     const buttonIndexMap = new Map<string, number>()
     sortedButtons.forEach((button, idx) => {
       buttonIndexMap.set(button.href, idx + 1) // 1-indexed for HomeKit
@@ -367,7 +445,9 @@ export class PicoRemote {
 
     for (const button of buttons) {
       const dentry = BUTTON_MAP.get(this.accessory.context.device.DeviceType)
-      let alias: { label: string, index: number, isUpDown: boolean } | undefined
+      let alias:
+        | { label: string, index: number, isUpDown: boolean }
+        | undefined
 
       if (dentry !== undefined) {
         // Known device type - use static button map
@@ -381,8 +461,12 @@ export class PicoRemote {
       } else {
         // Unknown device type (e.g., QSX keypads) - generate dynamic button mapping
         // Use the button's Engraving text if available, otherwise Name, otherwise generic
-        const engravingText = (button as any).Engraving?.Text?.replace(/[\r\n]+/g, ' ').trim()
-        let buttonLabel = engravingText || button.Name || `Button ${button.ButtonNumber}`
+        const engravingText = (button as any).Engraving?.Text?.replace(
+          /[\r\n]+/g,
+          ' ',
+        ).trim()
+        let buttonLabel
+          = engravingText || button.Name || `Button ${button.ButtonNumber}`
         // Append " Button" suffix if not already present
         if (!buttonLabel.toLowerCase().includes('button')) {
           buttonLabel = `${buttonLabel} Button`
@@ -398,7 +482,8 @@ export class PicoRemote {
         // Use sequential index from buttonIndexMap to handle API numbering gaps
         // (e.g., if API returns buttons 1, 2, 4, we map to indices 1, 2, 3)
         // Use button.href as key since merged devices can have duplicate ButtonNumbers
-        const sequentialIndex = buttonIndexMap.get(button.href) || button.ButtonNumber
+        const sequentialIndex
+          = buttonIndexMap.get(button.href) || button.ButtonNumber
         alias = {
           label: buttonLabel,
           index: sequentialIndex,
@@ -421,40 +506,67 @@ export class PicoRemote {
       )
 
       const service
-                = this.accessory.getServiceById(this.platform.api.hap.Service.StatelessProgrammableSwitch, alias.label)
-                  || this.accessory.addService(
-                    this.platform.api.hap.Service.StatelessProgrammableSwitch,
-                    alias.label, // Use the label (with engraving) as the display name
-                    alias.label,
-                  )
+        = this.accessory.getServiceById(
+          this.platform.api.hap.Service.StatelessProgrammableSwitch,
+          alias.label,
+        )
+        || this.accessory.addService(
+          this.platform.api.hap.Service.StatelessProgrammableSwitch,
+          alias.label, // Use the label (with engraving) as the display name
+          alias.label,
+        )
       service.addLinkedService(label_svc)
       activeSubtypes.add(alias.label)
 
-      service.setCharacteristic(this.platform.api.hap.Characteristic.Name, alias.label)
+      service.setCharacteristic(
+        this.platform.api.hap.Characteristic.Name,
+        alias.label,
+      )
       // Also set ConfiguredName if available - this is what HomeKit often displays
       if (this.platform.api.hap.Characteristic.ConfiguredName) {
-        service.setCharacteristic(this.platform.api.hap.Characteristic.ConfiguredName, alias.label)
+        service.setCharacteristic(
+          this.platform.api.hap.Characteristic.ConfiguredName,
+          alias.label,
+        )
       }
-      service.setCharacteristic(this.platform.api.hap.Characteristic.ServiceLabelIndex, alias.index)
+      service.setCharacteristic(
+        this.platform.api.hap.Characteristic.ServiceLabelIndex,
+        alias.index,
+      )
 
       // Check if this is a shades button (only sends Press, no Release/LongHold)
       // For shades buttons, we disable long press since it can't be detected reliably
-      const engravingText = (button as any).Engraving?.Text?.replace(/[\r\n]+/g, ' ').trim()
+      const engravingText = (button as any).Engraving?.Text?.replace(
+        /[\r\n]+/g,
+        ' ',
+      ).trim()
       const isShades = isShadesButton(button.Name || '', engravingText)
       if (isShades) {
-        this.platform.log.info(`Button "${alias.label}" detected as shades button - long press disabled`)
+        this.platform.log.info(
+          `Button "${alias.label}" detected as shades button - long press disabled`,
+        )
       }
 
-      const validValues = [this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS]
+      const validValues = [
+        this.platform.api.hap.Characteristic.ProgrammableSwitchEvent
+          .SINGLE_PRESS,
+      ]
       if (this.options.clickSpeedDouble !== 'disabled') {
-        validValues.push(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS)
+        validValues.push(
+          this.platform.api.hap.Characteristic.ProgrammableSwitchEvent
+            .DOUBLE_PRESS,
+        )
       } else {
         this.platform.log.debug('double press disabled')
       }
       // Only enable long press if not disabled AND not a shades button
-      const longPressEnabled = this.options.clickSpeedLong !== 'disabled' && !isShades
+      const longPressEnabled
+        = this.options.clickSpeedLong !== 'disabled' && !isShades
       if (longPressEnabled) {
-        validValues.push(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS)
+        validValues.push(
+          this.platform.api.hap.Characteristic.ProgrammableSwitchEvent
+            .LONG_PRESS,
+        )
       } else if (isShades) {
         this.platform.log.debug('long press disabled for shades button')
       } else {
@@ -463,31 +575,49 @@ export class PicoRemote {
       this.platform.log.debug('validValues', validValues)
 
       service
-        .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
+        .getCharacteristic(
+          this.platform.api.hap.Characteristic.ProgrammableSwitchEvent,
+        )
         .setProps({
-          maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
+          maxValue:
+            this.platform.api.hap.Characteristic.ProgrammableSwitchEvent
+              .LONG_PRESS,
           validValues,
         })
 
       const SINGLE_PRESS = () => {
         return service
-          .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
+          .getCharacteristic(
+            this.platform.api.hap.Characteristic.ProgrammableSwitchEvent,
+          )
           .setProps({
-            maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
+            maxValue:
+              this.platform.api.hap.Characteristic.ProgrammableSwitchEvent
+                .LONG_PRESS,
             validValues,
           })
-          .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS)
+          .updateValue(
+            this.platform.api.hap.Characteristic.ProgrammableSwitchEvent
+              .SINGLE_PRESS,
+          )
       }
       let DOUBLE_PRESS: () => Characteristic | null
       if (this.options.clickSpeedDouble !== 'disabled') {
         DOUBLE_PRESS = () => {
           return service
-            .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
+            .getCharacteristic(
+              this.platform.api.hap.Characteristic.ProgrammableSwitchEvent,
+            )
             .setProps({
-              maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
+              maxValue:
+                this.platform.api.hap.Characteristic.ProgrammableSwitchEvent
+                  .LONG_PRESS,
               validValues,
             })
-            .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS)
+            .updateValue(
+              this.platform.api.hap.Characteristic.ProgrammableSwitchEvent
+                .DOUBLE_PRESS,
+            )
         }
       } else {
         DOUBLE_PRESS = () => {
@@ -499,12 +629,19 @@ export class PicoRemote {
       if (longPressEnabled) {
         LONG_PRESS = () => {
           return service
-            .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
+            .getCharacteristic(
+              this.platform.api.hap.Characteristic.ProgrammableSwitchEvent,
+            )
             .setProps({
-              maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
+              maxValue:
+                this.platform.api.hap.Characteristic.ProgrammableSwitchEvent
+                  .LONG_PRESS,
               validValues,
             })
-            .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS)
+            .updateValue(
+              this.platform.api.hap.Characteristic.ProgrammableSwitchEvent
+                .LONG_PRESS,
+            )
         }
       } else {
         LONG_PRESS = () => {
@@ -524,7 +661,7 @@ export class PicoRemote {
         isShades ? 'disabled' : this.options.clickSpeedLong,
         alias.isUpDown,
         engravingText,
-        isShades,
+        isShades || this.bridge.isQSX,
       )
       this.trackers.set(button.href, tracker)
 
@@ -534,7 +671,9 @@ export class PicoRemote {
         this.hasSyntheticButtons = true
         this.trackersByButtonNumber.set(button.ButtonNumber, tracker)
         this.servicesByButtonNumber.set(button.ButtonNumber, service)
-        this.platform.log.debug(`Registered synthetic button ${button.ButtonNumber} for event matching`)
+        this.platform.log.debug(
+          `Registered synthetic button ${button.ButtonNumber} for event matching`,
+        )
       }
 
       this.platform.log.debug(`subscribing to ${button.href} events`)
@@ -542,12 +681,15 @@ export class PicoRemote {
 
       // when the connection is lost, so are subscriptions.
       this.bridge.on('disconnected', () => {
-        this.platform.log.debug(`re-subscribing to ${button.href} events after connection loss`)
+        this.platform.log.debug(
+          `re-subscribing to ${button.href} events after connection loss`,
+        )
         this.bridge.subscribeToButton(button, this.handleEvent.bind(this))
       })
 
       // Track highest index for dynamic button creation
-      const currentIndex = buttonIndexMap.get(button.href) || button.ButtonNumber
+      const currentIndex
+        = buttonIndexMap.get(button.href) || button.ButtonNumber
       if (currentIndex >= this.nextButtonIndex) {
         this.nextButtonIndex = currentIndex + 1
       }
@@ -555,7 +697,10 @@ export class PicoRemote {
 
     // Persist all discovered buttons (both probed and previously persisted)
     for (const button of buttons) {
-      const engravingText = (button as any).Engraving?.Text?.replace(/[\r\n]+/g, ' ').trim()
+      const engravingText = (button as any).Engraving?.Text?.replace(
+        /[\r\n]+/g,
+        ' ',
+      ).trim()
       const discoveredButton: DiscoveredButton = {
         href: button.href,
         ButtonNumber: button.ButtonNumber,
@@ -570,17 +715,23 @@ export class PicoRemote {
       }
       discoveryService.addButton(discoveredButton)
     }
-    this.platform.log.debug(`${fullName}: Persisted ${buttons.length} probed buttons`)
+    this.platform.log.debug(
+      `${fullName}: Persisted ${buttons.length} probed buttons`,
+    )
 
     // Clean up stale services that no longer match any button
     // This handles the case where buttons were previously synthetic but are now real
     const allServices = this.accessory.services.filter(
-      s => s.UUID === this.platform.api.hap.Service.StatelessProgrammableSwitch.UUID,
+      s =>
+        s.UUID
+        === this.platform.api.hap.Service.StatelessProgrammableSwitch.UUID,
     )
     for (const service of allServices) {
       const subtype = service.subtype
       if (subtype && !activeSubtypes.has(subtype)) {
-        this.platform.log.debug(`${fullName}: Removing stale button service with subtype "${subtype}"`)
+        this.platform.log.debug(
+          `${fullName}: Removing stale button service with subtype "${subtype}"`,
+        )
         this.accessory.removeService(service)
       }
     }
@@ -595,7 +746,9 @@ export class PicoRemote {
 
   handleEvent(response: Response): void {
     const evt = (response.Body! as OneButtonStatusEvent).ButtonStatus
-    const fullName = sanitizeHomeKitName(this.accessory.context.device.FullyQualifiedName.join(' '))
+    const fullName = sanitizeHomeKitName(
+      this.accessory.context.device.FullyQualifiedName.join(' '),
+    )
 
     // Deduplicate: QSX processors sometimes send the same event multiple times
     // Use a short 50ms window to catch only true duplicates (which arrive almost simultaneously)
@@ -660,7 +813,9 @@ export class PicoRemote {
       // was lost. The deduplication logic in handleEvent will prevent
       // double-processing if both paths deliver the event.
       if (this.services.has(href)) {
-        this.platform.log.debug(`Got unsolicited event for known button ${href}, handling as fallback`)
+        this.platform.log.debug(
+          `Got unsolicited event for known button ${href}, handling as fallback`,
+        )
         this.handleEvent(response)
         return
       }
@@ -670,7 +825,10 @@ export class PicoRemote {
       if (this.hasSyntheticButtons) {
         // @ts-expect-error - ButtonNumber may be in the event
         const buttonNumber = evt?.ButtonStatus.Button?.ButtonNumber
-        if (buttonNumber !== undefined && this.trackersByButtonNumber.has(buttonNumber)) {
+        if (
+          buttonNumber !== undefined
+          && this.trackersByButtonNumber.has(buttonNumber)
+        ) {
           this.platform.log.debug(
             `Matched unsolicited QSX button event by ButtonNumber: ${buttonNumber} (real href: ${href})`,
           )
@@ -691,34 +849,58 @@ export class PicoRemote {
       // Dynamic discovery: Check if this button might belong to this device
       // by checking if its parent buttongroup matches any of our buttongroups
       // @ts-expect-error - Button may have Parent property in full response
-      const buttonParentHref = evt?.ButtonStatus.Button?.Parent?.href as string | undefined
+      const buttonParentHref = evt?.ButtonStatus.Button?.Parent?.href as
+        | string
+        | undefined
       if (buttonParentHref && this.buttonGroupHrefs.has(buttonParentHref)) {
-        this.platform.log.debug(`[DYNAMIC DISCOVERY] Unknown button ${href} belongs to our buttongroup ${buttonParentHref}`)
-        this.registerDynamicButton(href, evt.ButtonStatus.ButtonEvent.EventType).catch((e) => {
-          this.platform.log.error(`[DYNAMIC DISCOVERY] Failed to register button ${href}: ${e}`)
+        this.platform.log.debug(
+          `[DYNAMIC DISCOVERY] Unknown button ${href} belongs to our buttongroup ${buttonParentHref}`,
+        )
+        this.registerDynamicButton(
+          href,
+          evt.ButtonStatus.ButtonEvent.EventType,
+        ).catch((e) => {
+          this.platform.log.error(
+            `[DYNAMIC DISCOVERY] Failed to register button ${href}: ${e}`,
+          )
         })
       }
     }
   }
 
-  private async registerDynamicButton(buttonHref: string, initialEventType: string): Promise<void> {
-    const fullName = sanitizeHomeKitName(this.accessory.context.device.FullyQualifiedName.join(' '))
+  private async registerDynamicButton(
+    buttonHref: string,
+    initialEventType: string,
+  ): Promise<void> {
+    const fullName = sanitizeHomeKitName(
+      this.accessory.context.device.FullyQualifiedName.join(' '),
+    )
     const device = this.accessory.context.device as any
 
-    this.platform.log.debug(`[DYNAMIC DISCOVERY] Fetching button details for ${buttonHref}...`)
+    this.platform.log.debug(
+      `[DYNAMIC DISCOVERY] Fetching button details for ${buttonHref}...`,
+    )
 
     // Fetch the button details from the bridge
     const button = await this.bridge.getButton(buttonHref)
     if (!button) {
-      this.platform.log.warn(`[DYNAMIC DISCOVERY] Could not fetch button ${buttonHref}`)
+      this.platform.log.warn(
+        `[DYNAMIC DISCOVERY] Could not fetch button ${buttonHref}`,
+      )
       return
     }
 
-    this.platform.log.debug(`[DYNAMIC DISCOVERY] Button fetched: Name="${button.Name}", ButtonNumber=${button.ButtonNumber}`)
+    this.platform.log.debug(
+      `[DYNAMIC DISCOVERY] Button fetched: Name="${button.Name}", ButtonNumber=${button.ButtonNumber}`,
+    )
 
     // Generate button label and index
-    const engravingText = (button as any).Engraving?.Text?.replace(/[\r\n]+/g, ' ').trim()
-    let buttonLabel = engravingText || button.Name || `Button ${button.ButtonNumber}`
+    const engravingText = (button as any).Engraving?.Text?.replace(
+      /[\r\n]+/g,
+      ' ',
+    ).trim()
+    let buttonLabel
+      = engravingText || button.Name || `Button ${button.ButtonNumber}`
     // Append " Button" suffix if not already present
     if (!buttonLabel.toLowerCase().includes('button')) {
       buttonLabel = `${buttonLabel} Button`
@@ -746,47 +928,101 @@ export class PicoRemote {
       service.addLinkedService(this.labelService)
     }
 
-    service.setCharacteristic(this.platform.api.hap.Characteristic.Name, buttonLabel)
+    service.setCharacteristic(
+      this.platform.api.hap.Characteristic.Name,
+      buttonLabel,
+    )
     if (this.platform.api.hap.Characteristic.ConfiguredName) {
-      service.setCharacteristic(this.platform.api.hap.Characteristic.ConfiguredName, buttonLabel)
+      service.setCharacteristic(
+        this.platform.api.hap.Characteristic.ConfiguredName,
+        buttonLabel,
+      )
     }
-    service.setCharacteristic(this.platform.api.hap.Characteristic.ServiceLabelIndex, buttonIndex)
+    service.setCharacteristic(
+      this.platform.api.hap.Characteristic.ServiceLabelIndex,
+      buttonIndex,
+    )
 
     // Set up valid values
-    const validValues = [this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS]
+    const validValues = [
+      this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS,
+    ]
     if (this.options.clickSpeedDouble !== 'disabled') {
-      validValues.push(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS)
+      validValues.push(
+        this.platform.api.hap.Characteristic.ProgrammableSwitchEvent
+          .DOUBLE_PRESS,
+      )
     }
-    const longPressEnabled = this.options.clickSpeedLong !== 'disabled' && !isShades
+    const longPressEnabled
+      = this.options.clickSpeedLong !== 'disabled' && !isShades
     if (longPressEnabled) {
-      validValues.push(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS)
+      validValues.push(
+        this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
+      )
     }
 
     service
-      .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
+      .getCharacteristic(
+        this.platform.api.hap.Characteristic.ProgrammableSwitchEvent,
+      )
       .setProps({
-        maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
+        maxValue:
+          this.platform.api.hap.Characteristic.ProgrammableSwitchEvent
+            .LONG_PRESS,
         validValues,
       })
 
     // Create button action callbacks
     const SINGLE_PRESS = () => {
       return service
-        .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
-        .setProps({ maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS, validValues })
-        .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS)
+        .getCharacteristic(
+          this.platform.api.hap.Characteristic.ProgrammableSwitchEvent,
+        )
+        .setProps({
+          maxValue:
+            this.platform.api.hap.Characteristic.ProgrammableSwitchEvent
+              .LONG_PRESS,
+          validValues,
+        })
+        .updateValue(
+          this.platform.api.hap.Characteristic.ProgrammableSwitchEvent
+            .SINGLE_PRESS,
+        )
     }
-    const DOUBLE_PRESS = this.options.clickSpeedDouble !== 'disabled'
-      ? () => service
-          .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
-          .setProps({ maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS, validValues })
-          .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS)
-      : () => null
+    const DOUBLE_PRESS
+      = this.options.clickSpeedDouble !== 'disabled'
+        ? () =>
+            service
+              .getCharacteristic(
+                this.platform.api.hap.Characteristic.ProgrammableSwitchEvent,
+              )
+              .setProps({
+                maxValue:
+                  this.platform.api.hap.Characteristic.ProgrammableSwitchEvent
+                    .LONG_PRESS,
+                validValues,
+              })
+              .updateValue(
+                this.platform.api.hap.Characteristic.ProgrammableSwitchEvent
+                  .DOUBLE_PRESS,
+              )
+        : () => null
     const LONG_PRESS = longPressEnabled
-      ? () => service
-          .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
-          .setProps({ maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS, validValues })
-          .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS)
+      ? () =>
+          service
+            .getCharacteristic(
+              this.platform.api.hap.Characteristic.ProgrammableSwitchEvent,
+            )
+            .setProps({
+              maxValue:
+                this.platform.api.hap.Characteristic.ProgrammableSwitchEvent
+                  .LONG_PRESS,
+              validValues,
+            })
+            .updateValue(
+              this.platform.api.hap.Characteristic.ProgrammableSwitchEvent
+                .LONG_PRESS,
+            )
       : () => null
 
     // Register service and tracker
@@ -801,7 +1037,7 @@ export class PicoRemote {
       isShades ? 'disabled' : this.options.clickSpeedLong,
       false, // isUpDown
       engravingText,
-      isShades,
+      isShades || this.bridge.isQSX,
     )
     this.trackers.set(button.href, tracker)
 
