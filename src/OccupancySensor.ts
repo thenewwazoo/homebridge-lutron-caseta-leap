@@ -4,7 +4,7 @@ import type { OccupancyStatus, OneAreaDefinition, OneAreaStatus, SmartBridge } f
 import type { DeviceWireResult, LutronCasetaLeap } from './platform.js'
 
 import { OccupancySensorRouter } from './OccupancySensorRouter.js'
-import { DeviceWireResultType, sanitizeHomeKitName } from './platform.js'
+import { DeviceWireResultType, formatQSXDeviceName, sanitizeHomeKitName } from './platform.js'
 
 export class OccupancySensor {
   private service: Service
@@ -16,7 +16,10 @@ export class OccupancySensor {
     private readonly accessory: PlatformAccessory,
     private readonly bridge: SmartBridge,
   ) {
-    this.fullName = sanitizeHomeKitName(accessory.context.device.FullyQualifiedName.join(' '))
+    const deviceType = accessory.context.device.DeviceType
+    this.fullName = (deviceType === 'RPSOccupancySensor' || deviceType === 'RPSCeilingMountedOccupancySensor')
+      ? formatQSXDeviceName(accessory.context.device.FullyQualifiedName)
+      : sanitizeHomeKitName(accessory.context.device.FullyQualifiedName.join(' '))
 
     this.state = 'Unknown'
 

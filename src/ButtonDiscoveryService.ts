@@ -92,7 +92,8 @@ export class ButtonDiscoveryService {
 
     this.data.buttons.push(button)
     this.save()
-    this.log.info(`[ButtonDiscovery] Added new button: ${button.Name || button.href} (${button.source})`)
+    const label = button.Engraving?.Text?.replace(/[\r\n]+/g, ' ').trim() || button.Name || button.href
+    this.log.info(`[ButtonDiscovery] Added new button: "${label}" ${button.href} on ${button.deviceHref} (${button.source})`)
     return true
   }
 

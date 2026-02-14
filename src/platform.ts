@@ -81,6 +81,9 @@ export interface WireError {
 export function sanitizeHomeKitName(name: string): string {
   // Trim whitespace first
   let sanitized = name.trim()
+  // Normalize smart quotes to plain ASCII equivalents
+  sanitized = sanitized.replace(/[\u2018\u2019]/g, '\'')
+  sanitized = sanitized.replace(/[\u201C\u201D]/g, '"')
   // Remove control characters and characters known to be rejected by HomeKit
   // Keep letters, numbers, spaces, hyphens, periods, parentheses,
   // ampersand, single quotes, commas, slashes, and other common punctuation
@@ -96,6 +99,71 @@ export function sanitizeHomeKitName(name: string): string {
     sanitized = 'Unknown Device'
   }
   return sanitized
+}
+
+/**
+ * Format a QSX keypad name for HomeKit display.
+ * QSX FullyQualifiedName is [areaName, deviceName] where areaName has
+ * a coded prefix (e.g., "101 Foyer", "B03 Wine Tasting").
+ *
+ * This function:
+ * 1. Strips the coded area prefix (e.g., "101 ", "B03 ")
+ * 2. Removes consecutive duplicate words (e.g., "Kitchen Kitchen Island" → "Kitchen Island")
+ * 3. Optionally appends a suffix (e.g., " Keypad")
+ */
+export function formatQSXDeviceName(fullyQualifiedName: string[], suffix?: string): string {
+  let name = fullyQualifiedName.join(' ')
+
+  // Strip coded area prefix: optional letter + 2-3 digits + space
+  name = name.replace(/^[A-Za-z]?\d{2,3}\s+/, '')
+
+  // Remove consecutive duplicate words (case-insensitive)
+  const words = name.split(/\s+/)
+  const deduped = [words[0]]
+  for (let i = 1; i < words.length; i++) {
+    if (words[i].toLowerCase() !== words[i - 1].toLowerCase()) {
+      deduped.push(words[i])
+    }
+  }
+  name = deduped.join(' ')
+
+  if (suffix) {
+    name = `${name} ${suffix}`
+  }
+
+  return sanitizeHomeKitName(name)
+}
+
+export function formatQSXKeypadName(fullyQualifiedName: string[]): string {
+  return formatQSXDeviceName(fullyQualifiedName, 'Keypad')
+}
+
+/**
+ * Find cached accessories that are orphans: same device href as a currently
+ * discovered device but a different UUID (caused by SerialNumber changing,
+ * e.g., from an href-based fallback to the real hardware serial).
+ *
+ * This is intentionally conservative — it only flags accessories where
+ * the same physical device (by href) exists with a *different* UUID.
+ * Devices that are offline or removed won't appear in hrefToUuid, so
+ * their cached accessories are left untouched.
+ */
+export function findOrphanedAccessories(
+  processedUuids: Set<string>,
+  hrefToUuid: Map<string, string>,
+  accessories: Map<string, PlatformAccessory>,
+): PlatformAccessory[] {
+  const orphans: PlatformAccessory[] = []
+  for (const [uuid, accessory] of accessories) {
+    if (processedUuids.has(uuid)) {
+      continue
+    }
+    const deviceHref = accessory.context?.device?.href
+    if (deviceHref && hrefToUuid.has(deviceHref)) {
+      orphans.push(accessory)
+    }
+  }
+  return orphans
 }
 
 export class LutronCasetaLeap
@@ -289,6 +357,24 @@ export class LutronCasetaLeap
       // These are reported as separate devices but should be a single HomeKit accessory
       const mergedDevices = this.mergeMultiGangKeypads(devices)
 
+      // Build UUID set and href-to-UUID map for orphan detection
+      const processedUuids = new Set<string>()
+      const hrefToUuid = new Map<string, string>()
+
+      for (const device of mergedDevices) {
+        const uuid = this.api.hap.uuid.generate(device.SerialNumber.toString())
+        processedUuids.add(uuid)
+        hrefToUuid.set(device.href, uuid)
+
+        // For merged multi-gang keypads, also map constituent device hrefs
+        const mergedHrefs = (device as DeviceDefinition & { _mergedDeviceHrefs?: string[] })._mergedDeviceHrefs
+        if (mergedHrefs) {
+          for (const href of mergedHrefs) {
+            hrefToUuid.set(href, uuid)
+          }
+        }
+      }
+
       const results: PromiseSettledResult<string>[] = await Promise.allSettled(
         mergedDevices.map((device: DeviceDefinition) => this.processDevice(bridge, device)),
       )
@@ -303,6 +389,24 @@ export class LutronCasetaLeap
             break
           }
         }
+      }
+
+      // Clean up orphaned accessories caused by SerialNumber changes
+      const orphans = findOrphanedAccessories(processedUuids, hrefToUuid, this.accessories)
+
+      if (orphans.length > 0) {
+        for (const orphan of orphans) {
+          this.log.warn(
+            `Removing orphaned accessory "${orphan.displayName}" `
+            + `(stale UUID from href ${orphan.context.device.href}, `
+            + `serial was "${orphan.context.device.SerialNumber}")`,
+          )
+        }
+        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, orphans)
+        for (const orphan of orphans) {
+          this.accessories.delete(orphan.UUID)
+        }
+        this.log.warn(`Cleaned up ${orphans.length} orphaned accessor${orphans.length === 1 ? 'y' : 'ies'}`)
       }
     })
 
@@ -378,7 +482,18 @@ export class LutronCasetaLeap
   }
 
   async processDevice(bridge: SmartBridge, d: DeviceDefinition): Promise<string> {
-    const fullName = sanitizeHomeKitName(d.FullyQualifiedName.join(' '))
+    let fullName = sanitizeHomeKitName(d.FullyQualifiedName.join(' '))
+
+    // Format QSX keypad names: strip area prefix, deduplicate, append "Keypad"
+    if (d.DeviceType === 'PalladiomKeypad' || d.DeviceType === 'SeeTouchTabletopKeypad') {
+      fullName = formatQSXKeypadName(d.FullyQualifiedName)
+    }
+
+    // Format QSX occupancy sensor names: strip area prefix, deduplicate
+    if (d.DeviceType === 'RPSOccupancySensor' || d.DeviceType === 'RPSCeilingMountedOccupancySensor') {
+      fullName = formatQSXDeviceName(d.FullyQualifiedName)
+    }
+
     const uuid = this.api.hap.uuid.generate(d.SerialNumber.toString())
 
     let accessory: PlatformAccessory | undefined = this.accessories.get(uuid)
@@ -412,6 +527,11 @@ export class LutronCasetaLeap
           this.accessories.set(accessory.UUID, accessory)
           this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
           this.log.debug(`registered new device ${fullName} because it was new`)
+        } else {
+          // Notify Homebridge that the cached accessory may have changed
+          // (e.g., new button services added). This increments the HAP
+          // configuration version so HomeKit re-queries the service list.
+          this.api.updatePlatformAccessories([accessory])
         }
         return Promise.resolve(is_from_cache
           ? `Restoring existing accessory from cache: ${fullName}`

@@ -18,7 +18,7 @@ import { inspect } from 'node:util'
 import { ExceptionDetail } from 'lutron-leap'
 
 import { ButtonTracker } from './ButtonState.js'
-import { DeviceWireResultType, sanitizeHomeKitName } from './platform.js'
+import { DeviceWireResultType, formatQSXKeypadName, sanitizeHomeKitName } from './platform.js'
 
 // Keywords that indicate a button is a shades/blinds control button
 // These buttons typically only send Press events (no Release/LongHold)
@@ -172,9 +172,10 @@ export class PicoRemote {
   ) {}
 
   public async initialize(): Promise<DeviceWireResult> {
-    const fullName = sanitizeHomeKitName(
-      this.accessory.context.device.FullyQualifiedName.join(' '),
-    )
+    const deviceType = this.accessory.context.device.DeviceType
+    const fullName = (deviceType === 'PalladiomKeypad' || deviceType === 'SeeTouchTabletopKeypad')
+      ? formatQSXKeypadName(this.accessory.context.device.FullyQualifiedName)
+      : sanitizeHomeKitName(this.accessory.context.device.FullyQualifiedName.join(' '))
 
     // Check if this is a merged device (2-gang keypad)
     // These properties are added by platform.mergeMultiGangKeypads() for merged devices
