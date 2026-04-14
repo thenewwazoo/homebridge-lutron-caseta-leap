@@ -36,6 +36,16 @@
 
         }
       },
+      "enableMatter": {
+        "type": "boolean",
+        "title": "Enable Matter (requires Homebridge v2.0+)",
+        "description": "When enabled, the plugin will use the Homebridge Matter API to register accessories if it is available."
+      },
+      "preferMatter": {
+        "type": "boolean",
+        "title": "Prefer Matter over HAP",
+        "description": "When both Matter and HAP are available, prefer the Matter API for accessory registration."
+      },
       "secrets": {
         "type": "array",
         "items": {
@@ -77,6 +87,24 @@
         }
       ]
 
+    },
+    {
+      "type": "div",
+      "displayFlex": true,
+      "items": [
+        {
+          "key": "enableMatter",
+          "notitle": false,
+          "type": "boolean",
+          "flex": "1 1 150px"
+        },
+        {
+          "key": "preferMatter",
+          "notitle": false,
+          "type": "boolean",
+          "flex": "1 1 150px"
+        }
+      ]
     },
     {
       "key": "secrets",
