@@ -1,6 +1,7 @@
-import type { API, Logging, PlatformConfig } from 'homebridge'
+import type { API, Logging, PlatformAccessory, PlatformConfig } from 'homebridge'
+import type { DeviceDefinition, SmartBridge } from 'lutron-leap'
 
-import { LutronCasetaLeap, DeviceWireResultType } from './platform.js'
+import { DeviceWireResultType, LutronCasetaLeap } from './platform.js'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js'
 
 /**
@@ -11,6 +12,10 @@ import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js'
  * available.  If the Matter API is absent at runtime the class falls back
  * transparently to the standard HAP behaviour inherited from
  * {@link LutronCasetaLeap}.
+ *
+ * Note: `configureAccessory` is intentionally **not** overridden here so that
+ * cached accessories restored by Homebridge continue to be stored in
+ * `this.accessories` via the base-class implementation.
  */
 export class LutronCasetaLeapMatterPlatform extends LutronCasetaLeap {
   constructor(log: Logging, config: PlatformConfig, api: API) {
@@ -19,11 +24,16 @@ export class LutronCasetaLeapMatterPlatform extends LutronCasetaLeap {
   }
 
   /**
-   * Returns the Homebridge Matter sub-API if available, or `undefined`.
+   * Returns the Homebridge Matter sub-API if both `registerPlatformAccessories`
+   * and `unregisterPlatformAccessories` are present, or `undefined` otherwise.
    */
   private get matterApi(): any | undefined {
     const anyApi = this.api as any
-    if (anyApi?.matter && typeof anyApi.matter.registerPlatformAccessories === 'function') {
+    if (
+      anyApi?.matter
+      && typeof anyApi.matter.registerPlatformAccessories === 'function'
+      && typeof anyApi.matter.unregisterPlatformAccessories === 'function'
+    ) {
       return anyApi.matter
     }
     return undefined
@@ -35,8 +45,8 @@ export class LutronCasetaLeapMatterPlatform extends LutronCasetaLeap {
    * to the standard HAP path when Matter is not present.
    */
   override async processDevice(
-    bridge: any,
-    d: any,
+    bridge: SmartBridge,
+    d: DeviceDefinition,
   ): Promise<string> {
     const mApi = this.matterApi
     if (!mApi) {
@@ -47,7 +57,7 @@ export class LutronCasetaLeapMatterPlatform extends LutronCasetaLeap {
     const fullName = d.FullyQualifiedName.join(' ')
     const uuid = this.api.hap.uuid.generate(d.SerialNumber.toString())
 
-    let accessory = this.accessories.get(uuid)
+    let accessory: PlatformAccessory | undefined = this.accessories.get(uuid)
     let isFromCache = true
     if (accessory === undefined) {
       isFromCache = false
@@ -86,3 +96,4 @@ export class LutronCasetaLeapMatterPlatform extends LutronCasetaLeap {
     }
   }
 }
+
