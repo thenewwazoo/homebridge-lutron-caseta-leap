@@ -72,7 +72,7 @@ export interface WireError {
 export class LutronCasetaLeap
   extends (EventEmitter as new () => TypedEmitter<PlatformEvents>)
   implements DynamicPlatformPlugin {
-  private readonly accessories: Map<string, PlatformAccessory> = new Map()
+  protected readonly accessories: Map<string, PlatformAccessory> = new Map()
   private finder: BridgeFinder | null = null
   private options: GlobalOptions
   private secrets: Map<string, BridgeAuthEntry>
