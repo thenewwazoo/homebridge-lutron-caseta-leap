@@ -104,6 +104,10 @@ export class PicoRemote {
   private trackers: Map<string, ButtonTracker> = new Map()
   // Map button href to ButtonNumber for event lookup
   private hrefToButtonNumber: Map<string, number> = new Map()
+  // Buttons collected during initialize() so a single 'disconnected' handler
+  // can re-subscribe all of them (LeapClient._empty() drops subscriptions on
+  // socket close — unlike pylutron-caseta, which preserves them).
+  private buttons: ButtonDefinition[] = []
 
   private matterApi?: any
   constructor(
@@ -158,11 +162,21 @@ export class PicoRemote {
       }
     }
 
-    bgs.forEach((bg) => {
+    // Bail out if the bridge returned an ExceptionDetail for any button group
+    // (typically when the device is mid-removal in the Lutron app). The previous
+    // code used forEach with `return new Error(...)` — both the return and the
+    // constructed-but-not-thrown Error were no-ops, so ExceptionDetail objects
+    // flowed into getButtonsFromGroup() below and surfaced as opaque errors.
+    // Returning Error here (not Skipped) means the cached accessory is preserved
+    // by the platform.ts cache-preservation rule until the user removes it.
+    for (const bg of bgs) {
       if (bg instanceof ExceptionDetail) {
-        return new Error('Device has been removed')
+        return {
+          kind: DeviceWireResultType.Error,
+          reason: `Bridge returned ExceptionDetail for button group on ${fullName}: ${bg.Message}`,
+        }
       }
-    })
+    }
 
     let buttons: ButtonDefinition[] = []
     for (const bg of bgs) {
@@ -294,15 +308,26 @@ export class PicoRemote {
         ),
       )
 
+      // Track this button so the single 'disconnected' handler registered after
+      // the loop can re-subscribe all of them. The previous code registered one
+      // disconnect listener per button, which leaked listeners (one Pico with N
+      // buttons added N listeners) — that's why platform.ts has setMaxListeners(400).
+      this.buttons.push(button)
       this.platform.log.debug(`subscribing to ${button.href} events`)
       this.bridge.subscribeToButton(button, this.handleEvent.bind(this))
-
-      // when the connection is lost, so are subscriptions.
-      this.bridge.on('disconnected', () => {
-        this.platform.log.debug(`re-subscribing to ${button.href} events after connection loss`)
-        this.bridge.subscribeToButton(button, this.handleEvent.bind(this))
-      })
     }
+
+    // LeapClient._empty() clears all taggedSubscriptions on socket close, so we
+    // must re-register them on reconnect. Home Assistant's lutron_caseta has no
+    // equivalent because pylutron-caseta preserves subscriptions across reconnect;
+    // that asymmetry is worth filing upstream against lutron-leap-js.
+    // One handler per device, not per button — see comment on this.buttons above.
+    this.bridge.on('disconnected', () => {
+      this.platform.log.debug(`re-subscribing to ${this.buttons.length} button(s) after connection loss`)
+      for (const button of this.buttons) {
+        this.bridge.subscribeToButton(button, this.handleEvent.bind(this))
+      }
+    })
 
     this.platform.on('unsolicited', this.handleUnsolicited.bind(this))
 

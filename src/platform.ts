@@ -235,8 +235,34 @@ export class LutronCasetaLeap
     }
   }
 
+  // Wrap getDeviceInfo() with bounded exponential backoff. The plain bridge call
+  // gives up after one failure, leaving the plugin degraded until mDNS re-announce
+  // or a deviceheard event — fragile during bridge firmware updates and brief
+  // network blips. Home Assistant's lutron_caseta delegates retry to Core's
+  // config-entry harness; Homebridge has no equivalent, so we loop in-plugin.
+  // ~65s total budget is comparable to HA's ~59s single-attempt window
+  // (CONNECT_TIMEOUT 9s + CONFIGURE_TIMEOUT 50s).
+  private async getDeviceInfoWithRetry(bridge: SmartBridge): Promise<DeviceDefinition[]> {
+    const delaysMs = [5_000, 15_000, 45_000] // 4 attempts total: immediate, +5s, +15s, +45s
+    let lastError: unknown
+    for (let attempt = 0; attempt <= delaysMs.length; attempt++) {
+      if (attempt > 0) {
+        const delay = delaysMs[attempt - 1]
+        this.log.info(`Retrying device inventory fetch in ${delay / 1000}s (attempt ${attempt + 1}/${delaysMs.length + 1})`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+      try {
+        return await bridge.getDeviceInfo()
+      } catch (error) {
+        lastError = error
+        this.log.warn(`Device inventory fetch failed (attempt ${attempt + 1}/${delaysMs.length + 1}):`, error)
+      }
+    }
+    throw lastError
+  }
+
   private processAllDevices(bridge: SmartBridge) {
-    bridge.getDeviceInfo().then(async (devices: DeviceDefinition[]) => {
+    this.getDeviceInfoWithRetry(bridge).then(async (devices: DeviceDefinition[]) => {
       const results: PromiseSettledResult<string>[] = await Promise.allSettled(
         devices.map((device: DeviceDefinition) => this.processDevice(bridge, device)),
       )
@@ -253,7 +279,9 @@ export class LutronCasetaLeap
         }
       }
     }).catch((error) => {
-      this.log.warn('Failed to fetch device inventory; skipping this scan:', error)
+      // Log at error (not warn) so users see when the plugin has given up — they
+      // may need to restart Homebridge if the bridge does not recover on its own.
+      this.log.error('Failed to fetch device inventory after retries; skipping this scan. Restart Homebridge if the bridge does not recover on its own:', error)
     })
 
     bridge.on('unsolicited', this.handleUnsolicitedMessage.bind(this))
@@ -283,9 +311,17 @@ export class LutronCasetaLeap
         return Promise.reject(new Error(`Failed to wire device ${fullName}: ${result.reason}`))
       }
       case DeviceWireResultType.Skipped: {
+        // Mirror the Error-path fix from #207 (v3.0.4): never unregister a cached
+        // accessory on a refresh-time classification miss. Skipped fires for transient
+        // bridge responses missing AffectedZones (filterPico path) and for filter
+        // toggles, both of which can flip across runs. Leaving the accessory registered
+        // matches Home Assistant's lutron_caseta philosophy — bridge inventory, not
+        // refresh state, is the source of truth for removal. Users still delete
+        // intentionally-filtered devices via the cached-accessory cleanup documented
+        // in the README.
         if (is_from_cache) {
-          this.log.debug(`un-registered cached device ${fullName} because it was skipped`)
-          this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
+          this.log.warn(`Skipping cached device ${fullName}; leaving accessory registered: ${result.reason}`)
+          return Promise.resolve(`Leaving cached accessory registered (skipped): ${fullName}`)
         }
         return Promise.resolve(`Skipped setting up device: ${result.reason}`)
       }
