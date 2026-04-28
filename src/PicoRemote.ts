@@ -8,6 +8,7 @@ import { inspect } from 'node:util'
 import { ExceptionDetail } from 'lutron-leap'
 
 import { ButtonTracker } from './ButtonState.js'
+import { logButtonPress } from './Logger.js'
 import { DeviceWireResultType } from './platform.js'
 
 // This maps DeviceType and ButtonNumber to human-readable labels and
@@ -305,6 +306,11 @@ export class PicoRemote {
           this.options.clickSpeedDouble,
           this.options.clickSpeedLong,
           alias.isUpDown,
+          // Thread the user's buttonPressLogging choice into the tracker so
+          // the interpreted short/long/double press lines respect it. The
+          // raw Press/Release event log in handleEvent() below uses the
+          // same option via logButtonPress().
+          this.options.buttonPressLogging,
         ),
       )
 
@@ -365,7 +371,14 @@ export class PicoRemote {
       }
     }
     const fullName = this.accessory.context.device.FullyQualifiedName.join(' ')
-    this.platform.log.info(
+    // Raw Press/Release event from the bridge — fires twice per physical
+    // press (once for Press, once for Release). Routed through
+    // logButtonPress() so the user's buttonPressLogging option (info /
+    // debug / silent) governs visibility, independent of the broader
+    // logLevel option. See Logger.ts.
+    logButtonPress(
+      this.platform.log,
+      this.options.buttonPressLogging,
       `Button ${evt.Button.href} on Pico remote ${fullName} got action ${evt.ButtonEvent.EventType}`,
     )
     this.trackers.get(evt.Button.href)!.update(evt.ButtonEvent.EventType)

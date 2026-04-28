@@ -32,6 +32,28 @@
               { "title": "Medium (default)", "enum": ["medium"] },
               { "title": "Slow", "enum": ["slow"] }
             ]
+          },
+          "logLevel": {
+            "type": "string",
+            "title": "Log Verbosity",
+            "description": "Controls which plugin log levels are emitted. 'Normal' is the default and what most users want — info is reserved for one-time lifecycle events, per-event noise is at debug. 'Quiet' suppresses info; 'Errors only' suppresses info AND warn. Homebridge's global debug toggle is not affected by this setting.",
+            "default": "normal",
+            "oneOf": [
+              { "title": "Normal (default)", "enum": ["normal"] },
+              { "title": "Quiet (suppress info)", "enum": ["quiet"] },
+              { "title": "Errors only (suppress info + warn)", "enum": ["errors-only"] }
+            ]
+          },
+          "buttonPressLogging": {
+            "type": "string",
+            "title": "Button Press Logging",
+            "description": "How verbose to be about button-press events specifically. 'Debug' is the default and means presses are quiet in normal logs (visible only with global Homebridge debug). Use 'Info' if you want to see presses while wiring up automations without enabling global debug. Use 'Silent' to drop them entirely.",
+            "default": "debug",
+            "oneOf": [
+              { "title": "Debug — visible only with global debug (default)", "enum": ["debug"] },
+              { "title": "Info — visible in normal logs", "enum": ["info"] },
+              { "title": "Silent — never logged", "enum": ["silent"] }
+            ]
           }
 
         }
@@ -89,6 +111,24 @@
         }
       ]
 
+    },
+    {
+      "type": "div",
+      "displayFlex": true,
+      "items": [
+        {
+          "key": "options.logLevel",
+          "notitle": false,
+          "type": "string",
+          "flex": "1 1 200px"
+        },
+        {
+          "key": "options.buttonPressLogging",
+          "notitle": false,
+          "type": "string",
+          "flex": "1 1 200px"
+        }
+      ]
     },
     {
       "type": "div",

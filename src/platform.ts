@@ -20,6 +20,9 @@ import {
   SmartBridge,
 } from 'lutron-leap'
 
+import type { ButtonPressLogLevel, LogLevelOption } from './Logger.js'
+
+import { createFilteredLogger } from './Logger.js'
 import { OccupancySensor } from './OccupancySensor.js'
 import { PicoRemote } from './PicoRemote.js'
 import { SerenaTiltOnlyWoodBlinds } from './SerenaTiltOnlyWoodBlinds.js'
@@ -37,6 +40,13 @@ export interface GlobalOptions {
   clickSpeedLong: 'quick' | 'default' | 'relaxed' | 'disabled'
   clickSpeedDouble: 'quick' | 'default' | 'relaxed' | 'disabled'
   logSSLKeyDangerous: boolean
+  // Plugin-level log verbosity. See src/Logger.ts for what each value does.
+  logLevel: LogLevelOption
+  // Specifically governs button-press log lines (raw Press/Release events
+  // and interpreted short/long/double press events). Independent of logLevel
+  // so users can silence presses without quieting the rest, or surface them
+  // for automation setup without enabling global Homebridge debug.
+  buttonPressLogging: ButtonPressLogLevel
 }
 
 interface BridgeAuthEntry {
@@ -77,18 +87,35 @@ export class LutronCasetaLeap
   private options: GlobalOptions
   private secrets: Map<string, BridgeAuthEntry>
   private bridgeMgr: Map<string, SmartBridge> = new Map()
+  // Log is declared as a regular field rather than a constructor parameter
+  // property because we need to wrap it (with the user's logLevel filter)
+  // before the rest of the constructor — and parameter properties are
+  // assigned implicitly at the start of the constructor, before user code
+  // runs. Wrapping at the platform level cascades to every device class
+  // that reads `this.platform.log`.
+  public readonly log: Logging
 
-  constructor(public readonly log: Logging, public readonly config: PlatformConfig, public readonly api: API) {
+  constructor(log: Logging, public readonly config: PlatformConfig, public readonly api: API) {
     super()
 
-    log.info('LutronCasetaLeap starting up...')
+    // Read options first so we know which verbosity level to wrap at, then
+    // wrap, then use this.log for everything else. createFilteredLogger
+    // returns the original instance unchanged when level is 'normal' (the
+    // default), so the only-overhead path is the active-filter case.
+    this.options = this.optionsFromConfig(config)
+    this.log = createFilteredLogger(log, this.options.logLevel)
+
+    this.log.info('LutronCasetaLeap starting up...')
 
     process.on('warning', e => this.log.warn(`Got ${e.name} process warning: ${e.message}:\n${e.stack}`))
 
-    this.options = this.optionsFromConfig(config)
     this.secrets = this.secretsFromConfig(config)
     if (this.secrets.size === 0) {
-      log.warn('No bridge auth configured. Retiring.')
+      // Bumped from warn to error: with no secrets the plugin can do
+      // nothing, so this must bypass any user-configured 'errors-only'
+      // filter and demand attention. (Previously a warn, which would have
+      // been suppressed under the new errors-only logLevel.)
+      this.log.error('No bridge auth configured. Retiring.')
       return
     }
 
@@ -104,12 +131,12 @@ export class LutronCasetaLeap
          * This event can also be used to start discovery of new accessories.
          */
     api.on(APIEvent.DID_FINISH_LAUNCHING, () => {
-      log.info('Finished launching; starting up automatic discovery')
+      this.log.info('Finished launching; starting up automatic discovery')
 
       this.finder = new BridgeFinder()
       this.finder.on('discovered', this.handleBridgeDiscovery.bind(this))
       this.finder.on('failed', (error) => {
-        log.error('Could not connect to discovered hub:', error)
+        this.log.error('Could not connect to discovered hub:', error)
       })
       this.finder.beginSearching()
     })
@@ -130,7 +157,7 @@ export class LutronCasetaLeap
       this.log.info(`Heap dump to ${fileName} finished.`)
     })
 
-    log.info('LutronCasetaLeap plugin finished early initialization')
+    this.log.info('LutronCasetaLeap plugin finished early initialization')
   }
 
   optionsFromConfig(config: PlatformConfig): GlobalOptions {
@@ -141,6 +168,14 @@ export class LutronCasetaLeap
         clickSpeedDouble: 'default',
         clickSpeedLong: 'default',
         logSSLKeyDangerous: false,
+        // Defaults reflect the post-reclassification "sane quiet by default"
+        // posture. logLevel 'normal' means the wrapper is a passthrough; the
+        // quietness comes from the call sites being correctly classified.
+        // buttonPressLogging 'debug' means presses are not visible in normal
+        // logs (a behavior change from earlier versions); use 'info' to
+        // restore the old chatty behavior, or 'silent' to drop them entirely.
+        logLevel: 'normal',
+        buttonPressLogging: 'debug',
       },
       config.options,
     )
@@ -172,10 +207,15 @@ export class LutronCasetaLeap
     if (this.bridgeMgr.has(bridgeID)) {
       // this is an existing bridge re-announcing itself, so we'll recycle the connection to it
       if (this.bridgeMgr.get(bridgeID)!.bridgeReconfigInProgress === true) {
-        this.log.info('Bridge', bridgeInfo.bridgeid, 'reconfiguration in progress, do nothing.')
+        // Per mDNS re-announcement noise — fires constantly during steady
+        // state. Was info; now debug. (See PR conversation: this trio of
+        // bridge-state lines was the user's primary complaint about info-
+        // level noise.)
+        this.log.debug('Bridge', bridgeInfo.bridgeid, 'reconfiguration in progress, do nothing.')
         return
       }
-      this.log.info('Bridge', bridgeInfo.bridgeid, 'already known, will skip setup.')
+      // Same — fires on every mDNS re-announce after the first. info → debug.
+      this.log.debug('Bridge', bridgeInfo.bridgeid, 'already known, will skip setup.')
       replaceClient = true
     }
 
@@ -216,9 +256,11 @@ export class LutronCasetaLeap
         //  - devices ask bridge to re-subscribe
         //  - bridge uses new client to re-subscribe
         //  - old client goes out of scope
-        this.log.info('Bridge', bridgeInfo.bridgeid, 'entering reconfiguration')
+        // Bookend an internal reconfigure operation. Useful when debugging
+        // a reconfigure issue, but normal-path noise otherwise. info → debug.
+        this.log.debug('Bridge', bridgeInfo.bridgeid, 'entering reconfiguration')
         await this.bridgeMgr.get(bridgeID)!.reconfigureBridge(client)
-        this.log.info('Bridge', bridgeInfo.bridgeid, 'exit reconfiguration')
+        this.log.debug('Bridge', bridgeInfo.bridgeid, 'exit reconfiguration')
       } else {
         const bridge = new SmartBridge(bridgeID, client)
 
@@ -231,7 +273,10 @@ export class LutronCasetaLeap
         this.processAllDevices(bridge)
       }
     } else {
-      this.log.info('no credentials from bridge ID', bridgeInfo.bridgeid)
+      // Multi-bridge scenario noise — if the user has 2 bridges and only
+      // configured 1, the unconfigured one will hit this branch on every
+      // mDNS announce. info → debug.
+      this.log.debug('no credentials from bridge ID', bridgeInfo.bridgeid)
     }
   }
 
@@ -269,7 +314,12 @@ export class LutronCasetaLeap
       for (const result of results) {
         switch (result.status) {
           case 'fulfilled': {
-            this.log.info(`Device setup finished: ${result.value}`)
+            // Fires per device per scan (e.g., 11 lines on every refresh
+            // for a setup with 11 Picos). The "Found a {DeviceType} ..."
+            // info lines emitted earlier already announce discovery; this
+            // line is just confirmation that wiring didn't throw, which
+            // is the normal outcome. info → debug.
+            this.log.debug(`Device setup finished: ${result.value}`)
             break
           }
           case 'rejected': {

@@ -34,7 +34,9 @@ enum MatterDeviceType {
 export class LutronCasetaLeapMatterPlatform extends LutronCasetaLeap {
   constructor(log: Logging, config: PlatformConfig, api: API) {
     super(log, config, api)
-    log.info('LutronCasetaLeapMatterPlatform: Matter mode active')
+    // Use this.log (wrapped by the base class with the user's logLevel) so
+    // the Matter banner respects the same verbosity setting as everything else.
+    this.log.info('LutronCasetaLeapMatterPlatform: Matter mode active')
   }
 
   /**
@@ -160,9 +162,13 @@ export class LutronCasetaLeapMatterPlatform extends LutronCasetaLeap {
           return '[Unserializable object]'
         }
       }
-      this.log.warn('[Matter Debug] Accessory before registration:', safeStringify(accessory))
-      this.log.warn('[Matter Debug] Accessory.context before registration:', safeStringify(accessory.context))
-      this.log.warn('[Matter Debug] Clusters before registration:', safeStringify(clusters))
+      // These three lines are tagged "[Matter Debug]" and serialise the entire
+      // accessory tree on every Pico scan — they were always intended as
+      // troubleshooting output, never operator-facing warnings. Downgraded from
+      // warn to debug so the prefix and the level finally agree.
+      this.log.debug('[Matter Debug] Accessory before registration:', safeStringify(accessory))
+      this.log.debug('[Matter Debug] Accessory.context before registration:', safeStringify(accessory.context))
+      this.log.debug('[Matter Debug] Clusters before registration:', safeStringify(clusters))
     }
     // Add more device type mappings as needed, using MatterDeviceType enum
 

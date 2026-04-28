@@ -70,6 +70,15 @@ This lets you set the speed with which you must click buttons in order to trigge
 
 These features can also be disabled individually in the settings. This can improve responsiveness to the remaining types of presses. **The configuration options in HomeKit do not change, but the plug-in will ignore disabled press types.**
 
+#### Log Verbosity
+
+Two settings control how chatty the plugin's logs are:
+
+- **Log Verbosity** (`logLevel`): `normal` (default), `quiet`, or `errors-only`. `quiet` suppresses info-level lines (startup banners, retry-attempt notices, etc.) and `errors-only` additionally suppresses warnings, leaving only errors. Homebridge's own global debug toggle is unaffected — if you turn that on, debug output will still flow.
+- **Button Press Logging** (`buttonPressLogging`): `debug` (default), `info`, or `silent`. Button presses are special-cased because they're useful when wiring up automations but are noise the rest of the time. `debug` keeps them out of normal logs (visible only when global debug is enabled); `info` makes them visible in normal logs; `silent` drops them entirely.
+
+The defaults reflect a sane "production posture" — startup and per-device discovery lines are visible at info, but per-event noise (button presses, mDNS re-announcements, blind-position polls) is at debug. Turn things up with `buttonPressLogging: info` for short-term troubleshooting, or down with `logLevel: quiet`/`errors-only` for long-term operation.
+
 ## 🏄 User Information
 
 ### Adding and Removing Devices
@@ -231,7 +240,9 @@ The shape of the configuration is:
     "filterPico": false,
     "filterBlinds": false,
     "clickSpeedLong": "default",
-    "clickSpeedDouble": "default"
+    "clickSpeedDouble": "default",
+    "logLevel": "normal",
+    "buttonPressLogging": "debug"
   },
   "secrets": [
     {

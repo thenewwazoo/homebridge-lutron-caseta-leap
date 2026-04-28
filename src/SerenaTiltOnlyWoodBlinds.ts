@@ -90,7 +90,10 @@ export class SerenaTiltOnlyWoodBlinds {
     )
     const tilt = await this.bridge.readBlindsTilt(this.device)
     const adj_val = Math.min(100, tilt * 2)
-    this.platform.log.info(
+    // Per-poll noise — Homebridge re-reads position frequently. Was info
+    // (visible in normal logs); now debug so steady-state operation stays
+    // quiet, with global debug bringing it back when troubleshooting.
+    this.platform.log.debug(
       'Told Homekit that blinds',
       this.device.FullyQualifiedName.join(' '),
       'are at position',
@@ -101,7 +104,9 @@ export class SerenaTiltOnlyWoodBlinds {
 
   async handleTargetPositionSet(value: CharacteristicValue): Promise<void> {
     const adj_val = Number(value) / 2
-    this.platform.log.info(
+    // Per-command noise — fires every time HomeKit drives the blind. Was
+    // info; now debug.
+    this.platform.log.debug(
       'Commanded',
       this.device.FullyQualifiedName.join(' '),
       'blinds to (adjusted) value',
@@ -118,7 +123,9 @@ export class SerenaTiltOnlyWoodBlinds {
     if (response.Header.MessageBodyType === 'OneZoneStatus') {
       if ((response.Body as OneZoneStatus)?.ZoneStatus?.Zone?.href === this.device.LocalZones[0].href) {
         const adj_val = Math.min(100, (response.Body as OneZoneStatus).ZoneStatus.Tilt * 2)
-        this.platform.log.info(
+        // Per state-change noise — fires on every physical blind movement.
+        // Was info; now debug.
+        this.platform.log.debug(
           'Blinds',
           this.device.FullyQualifiedName.join(' '),
           'reported a new position of',

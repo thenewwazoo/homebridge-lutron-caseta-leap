@@ -1,5 +1,9 @@
 import type { Logging } from 'homebridge'
 
+import type { ButtonPressLogLevel } from './Logger.js'
+
+import { logButtonPress } from './Logger.js'
+
 enum ButtonState {
   IDLE,
   DOWN,
@@ -78,6 +82,10 @@ export class ButtonTracker {
     clickSpeedDouble = 'default',
     clickSpeedLong = 'default',
     isUpDownButton = false,
+    // Default 'debug' matches the platform's optionsFromConfig default —
+    // safe even if a caller (e.g. a future device type or a test) forgets
+    // to thread the option through.
+    private buttonPressLogging: ButtonPressLogLevel = 'debug',
   ) {
     log.debug(`btrk ${this.href} created speed ${clickSpeedDouble} dbl ${clickSpeedLong} long`)
 
@@ -133,14 +141,17 @@ export class ButtonTracker {
         return
       }
 
-      this.log.info(`button ${this.href} got a long press`)
+      // Press lines are routed through logButtonPress() so the user's
+      // 'buttonPressLogging' option (info / debug / silent) governs them
+      // independently of the rest of the plugin's verbosity. See Logger.ts.
+      logButtonPress(this.log, this.buttonPressLogging, `button ${this.href} got a long press`)
       this.longPressCB()
     }
 
     const doublePressTimeoutHandler = () => {
       this.log.debug(`btrk ${this.href} double press expiry`)
       this.reset()
-      this.log.info(`button ${this.href} got a short press`)
+      logButtonPress(this.log, this.buttonPressLogging, `button ${this.href} got a short press`)
       this.shortPressCB()
     }
 
@@ -149,7 +160,7 @@ export class ButtonTracker {
         if (action === 'Press') {
           this.state = ButtonState.DOWN
           if (this.longPressDisabled) {
-            this.log.info(`button ${this.href} long press disabled. suppressing.`)
+            logButtonPress(this.log, this.buttonPressLogging, `button ${this.href} long press disabled. suppressing.`)
           } else {
             this.timer = setTimeout(longPressTimeoutHandler, this.longPressTimeout)
           }
@@ -187,11 +198,11 @@ export class ButtonTracker {
           this.reset()
 
           if (this.doublePressDisabled) {
-            this.log.info(`button ${this.href} double press disabled. suppressing.`)
+            logButtonPress(this.log, this.buttonPressLogging, `button ${this.href} double press disabled. suppressing.`)
             return
           }
 
-          this.log.info(`button ${this.href} got a double press`)
+          logButtonPress(this.log, this.buttonPressLogging, `button ${this.href} got a double press`)
           this.doublePressCB()
         } else {
           this.log.error(`btrk invalid action ${action} for state ${this.state}. resetting`)
