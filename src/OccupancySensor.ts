@@ -1,12 +1,27 @@
 import type { CharacteristicGetCallback, PlatformAccessory, Service } from 'homebridge'
 import type { OccupancyStatus, OneAreaDefinition, SmartBridge } from 'lutron-leap'
 
-import type { DeviceWireResult, LutronCasetaLeap } from './platform.js'
+import type { DeviceWireResult, LutronCasetaLeap } from './Platform.HAP.js'
 
 import { OccupancySensorRouter } from './OccupancySensorRouter.js'
-import { DeviceWireResultType } from './platform.js'
+import { DeviceWireResultType } from './Platform.HAP.js'
 
 export class OccupancySensor {
+  /**
+   * Returns a Matter clusters object for this occupancy sensor.
+   * Matches Matter spec: occupancySensing cluster per homebridge-matter wiki §7.3.
+   */
+  public static getMatterClusters(): Record<string, any> {
+    return {
+      occupancySensing: {
+        occupancy: { occupied: false },
+        // 0 = PIR sensor type per Matter §7.3
+        occupancySensorType: 0,
+        occupancySensorTypeBitmap: { pir: true, ultrasonic: false, physicalContact: false },
+      },
+    }
+  }
+
   private service: Service
   private state: OccupancyStatus
   private fullName: string
@@ -106,6 +121,14 @@ export class OccupancySensor {
         )
         this.service.setCharacteristic(this.platform.api.hap.Characteristic.StatusActive, false)
       }
+    }
+
+    const matterApi = (this.platform.api as any).matter
+    if (matterApi && this.accessory?.UUID) {
+      const occupied = update === 'Occupied'
+      void matterApi.updateAccessoryState(this.accessory.UUID, 'occupancySensing', {
+        occupancy: { occupied },
+      })
     }
   }
 

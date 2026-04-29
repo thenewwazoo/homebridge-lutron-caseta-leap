@@ -1,34 +1,56 @@
-# [3.1.0](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v3.0.5...v3.1.0) (2026-04-29)
-
+## [3.1.1](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v3.1.1) (2026-05-03)
 
 ### Features
 
-* configurable log verbosity (logLevel + buttonPressLogging) ([#228](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/issues/228)) ([40b1fd9](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/commit/40b1fd9116c2b8b4877d70001ddac4f6c3f7ee5c))
+* expand Matter device registration/mapping across supported device families (WallDimmer, WallSwitch, Serena tilt-only blinds, occupancy sensors, and Pico remotes) using `api.matter.deviceTypes.*`
+* refactor platform layout into dedicated HAP and Matter modules (`Platform.HAP.ts`, `Platform.Matter.ts`) and add Matter cluster helpers in device classes
 
+### Bug Fixes
 
+* Matter registration: set required accessory metadata on root object (fixes missing `manufacturer` validation failures)
+* Matter registration: constrain bridged accessory display names to Matter nodeLabel length limits (fixes `Behaviors have errors` on long room/device names)
+* Pico Matter composed endpoints: explicitly apply GenericSwitch `SwitchServer` behavior (`GenericSwitch.with(SwitchServer)`), restoring expected per-button rendering in Apple Home
+* Pico Matter behavior: move to GenericSwitch state updates for button presses, expand Pico button map coverage, and include Pico4Button in Matter GenericSwitch registration mapping
+* add `options.excludedDeviceTypes` support to skip selected device types in both HAP and Matter registration paths (including removing cached accessories for explicitly excluded types)
+* remove legacy `options.filterBlinds` toggle and rely on `options.excludedDeviceTypes` for Serena blind exclusion
+* excluded-device cleanup: in Matter mode, unregister excluded cached accessories from both HAP and Matter registries for deterministic removal
+* Pico button mapping robustness: improve `Pico3ButtonRaiseLower` alias resolution (including `Favorite` center-button naming variants) and skip unknown button definitions without failing whole-remote initialization
+* Matter command handling: add explicit handlers so WallDimmer and WallSwitch On/Off/Level commands always dispatch LEAP `GoToLevel` requests
+* Matter blind control: add `windowCovering.goToTiltPercentage` handler for Serena tilt-only blinds to map Matter tilt commands to LEAP blind tilt writes
+* Matter external-state sync: propagate unsolicited bridge updates back into Matter cluster state for WallDimmer (`onOff` + `levelControl`), WallSwitch (`onOff`), Serena tilt-only blinds (`windowCovering` tilt), and occupancy sensors (`occupancySensing`)
+* Pico Matter composed endpoint polish: use `BridgedNode` as Pico parent in composed mode and provide part `displayName` values to avoid undefined child labels in UI
 
-## [3.0.5](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v3.0.4...v3.0.5) (2026-04-27)
+### Maintenance
 
+* align imports/file naming with ESM casing expectations and update docs output
+* bump Homebridge beta compatibility to `^2.0.0-beta.110` and refresh lint/tooling dependencies
+
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v3.1.0...v3.1.1
+
+## [3.1.0](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v3.1.0) (2026-04-29)
+
+### Features
+
+* configurable log verbosity (logLevel + buttonPressLogging) ([#228](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/issues/228)) ([40b1fd9](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/commit/40b1fd9116c2b8b4877d70001ddac4f6c3f7ee5c)) 
+
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v3.0.5...v3.1.0
+
+## [3.0.5](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v3.0.5) (2026-04-27)
 
 ### Bug Fixes
 
 * cached accessory loss on Skipped, listener leak, inventory retry ([#227](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/issues/227)) ([4856be2](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/commit/4856be2accc95aec4a1cf778b4bef1610540ee0e))
 
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v3.0.4...v3.0.5
 
-
-## [3.0.4](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v3.0.1...v3.0.4) (2026-04-25)
-
+## [3.0.4](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v3.0.4) (2026-04-25)
 
 ### Bug Fixes
 
 * This accessory will not be registered. ([fb3c249](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/commit/fb3c2492cdcb30b2abe58aa9368be7e410d396c2))
-* This accessory will not be registered. ([#225](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/issues/225)) ([ff7cadf](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/commit/ff7cadfe493d38933740398a4a6f4faf6ad0b6f3))
+* This accessory will not be registered. ([#225](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/issues/225)) ([ff7cadf](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/commit/ff7cadfe493d38933740398a4a6f4faf6ad0b6f3)) 
 
-
-
-# Changelog
-
-All notable changes to this project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org/).
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v3.0.3...v3.0.4
 
 ## [3.0.3](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v3.0.3) (2026-04-23)
 

@@ -1,4 +1,4 @@
-import type { LogLevel, Logging } from 'homebridge'
+import type { Logging, LogLevel } from 'homebridge'
 
 /**
  * Plugin-level log verbosity setting. Stacks on top of Homebridge's own

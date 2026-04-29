@@ -7,7 +7,7 @@ import type {
 } from 'homebridge'
 import type { DeviceDefinition, OneZoneStatus, Response, SmartBridge } from 'lutron-leap'
 
-import type { LutronCasetaLeap } from './platform.js'
+import type { LutronCasetaLeap } from './Platform.HAP.js'
 
 export class SerenaTiltOnlyWoodBlinds {
   private service: Service
@@ -29,8 +29,8 @@ export class SerenaTiltOnlyWoodBlinds {
       .setCharacteristic(this.platform.api.hap.Characteristic.SerialNumber, this.device.SerialNumber.toString())
 
     this.service
-            = this.accessory.getService(this.platform.api.hap.Service.WindowCovering)
-              || this.accessory.addService(this.platform.api.hap.Service.WindowCovering)
+      = this.accessory.getService(this.platform.api.hap.Service.WindowCovering)
+        || this.accessory.addService(this.platform.api.hap.Service.WindowCovering)
 
     this.service.setCharacteristic(
       this.platform.api.hap.Characteristic.Name,
@@ -141,7 +141,30 @@ export class SerenaTiltOnlyWoodBlinds {
           .getService(this.platform.api.hap.Service.WindowCovering)!
           .getCharacteristic(this.platform.api.hap.Characteristic.CurrentPosition)
           .updateValue(adj_val)
+
+        const matterApi = (this.platform.api as any).matter
+        if (matterApi && this.accessory?.UUID) {
+          const tiltPercent100ths = Math.max(0, Math.min(10000, Math.round(adj_val * 100)))
+          void matterApi.updateAccessoryState(this.accessory.UUID, 'windowCovering', {
+            currentPositionTiltPercent100ths: tiltPercent100ths,
+            targetPositionTiltPercent100ths: tiltPercent100ths,
+          })
+        }
       }
+    }
+  }
+
+  /**
+   * Returns a Matter clusters object for this blind.
+   */
+  public static getMatterClusters(): Record<string, any> {
+    // Tilt-only blinds: Matter §8.3 WindowCovering
+    // 0 = open (horizontal), 10000 = closed (vertical) in hundredths of percent
+    return {
+      windowCovering: {
+        currentPositionTiltPercent100ths: 0, // 0=horizontal/open
+        targetPositionTiltPercent100ths: 0, // 0=horizontal/open
+      },
     }
   }
 }

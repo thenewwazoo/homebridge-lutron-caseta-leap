@@ -1,7 +1,7 @@
 import type { Characteristic, PlatformAccessory, Service } from 'homebridge'
 import type { ButtonDefinition, OneButtonStatusEvent, Response, SmartBridge } from 'lutron-leap'
 
-import type { DeviceWireResult, GlobalOptions, LutronCasetaLeap } from './platform.js'
+import type { DeviceWireResult, GlobalOptions, LutronCasetaLeap } from './Platform.HAP.js'
 
 import { inspect } from 'node:util'
 
@@ -9,7 +9,7 @@ import { ExceptionDetail } from 'lutron-leap'
 
 import { ButtonTracker } from './ButtonState.js'
 import { logButtonPress } from './Logger.js'
-import { DeviceWireResultType } from './platform.js'
+import { DeviceWireResultType } from './Platform.HAP.js'
 
 // This maps DeviceType and ButtonNumber to human-readable labels and
 // ServiceLabelIndex values. n.b. the labels are not shown in Apple's Home app,
@@ -93,11 +93,15 @@ const BUTTON_MAP = new Map<string, Map<number, { label: string, index: number, i
       [2, { label: 'Off', index: 2, isUpDown: false }],
     ]),
   ],
-  // TODO
-  /*
-    ['Pico4Button', new Map([
-    ])]
-   */
+  [
+    'Pico4Button',
+    new Map([
+      [1, { label: 'Button 1', index: 1, isUpDown: false }],
+      [2, { label: 'Button 2', index: 2, isUpDown: false }],
+      [3, { label: 'Button 3', index: 3, isUpDown: false }],
+      [4, { label: 'Button 4', index: 4, isUpDown: false }],
+    ]),
+  ],
 ])
 
 export class PicoRemote {
@@ -105,6 +109,8 @@ export class PicoRemote {
   private trackers: Map<string, ButtonTracker> = new Map()
   // Map button href to ButtonNumber for event lookup
   private hrefToButtonNumber: Map<string, number> = new Map()
+  // Resolved alias per button href so event handling does not depend solely on ButtonNumber.
+  private hrefToAlias: Map<string, { label: string, index: number, isUpDown: boolean }> = new Map()
   // Buttons collected during initialize() so a single 'disconnected' handler
   // can re-subscribe all of them (LeapClient._empty() drops subscriptions on
   // socket close — unlike pylutron-caseta, which preserves them).
@@ -119,6 +125,44 @@ export class PicoRemote {
     matterApi?: any,
   ) {
     this.matterApi = matterApi
+  }
+
+  private normalizeButtonName(name: string | undefined): string {
+    return (name || '').toLowerCase().replace(/\s+/g, ' ').trim()
+  }
+
+  private aliasFromButtonName(
+    dentry: Map<number, { label: string, index: number, isUpDown: boolean }>,
+    buttonName: string | undefined,
+  ): { label: string, index: number, isUpDown: boolean } | undefined {
+    const normalizedName = this.normalizeButtonName(buttonName)
+    if (normalizedName.length === 0) {
+      return undefined
+    }
+
+    const directMatch = Array.from(dentry.values()).find(v => this.normalizeButtonName(v.label) === normalizedName)
+    if (directMatch) {
+      return directMatch
+    }
+
+    // Common Lutron naming variant for center button.
+    if (normalizedName === 'favorite') {
+      return Array.from(dentry.values()).find(v => this.normalizeButtonName(v.label) === 'center')
+    }
+
+    return undefined
+  }
+
+  private resolveAlias(
+    dentry: Map<number, { label: string, index: number, isUpDown: boolean }>,
+    button: ButtonDefinition,
+  ): { label: string, index: number, isUpDown: boolean } | undefined {
+    const byNumber = dentry.get(button.ButtonNumber)
+    if (byNumber) {
+      return byNumber
+    }
+
+    return this.aliasFromButtonName(dentry, button.Name)
   }
 
   public async initialize(): Promise<DeviceWireResult> {
@@ -192,24 +236,26 @@ export class PicoRemote {
       }
     }
 
-    for (const button of buttons) {
-      const dentry = BUTTON_MAP.get(this.accessory.context.device.DeviceType)
-      if (dentry === undefined) {
-        return {
-          kind: DeviceWireResultType.Error,
-          reason: `Could not find ${this.accessory.context.device.DeviceType} in button map`,
-        }
+    const dentry = BUTTON_MAP.get(this.accessory.context.device.DeviceType)
+    if (dentry === undefined) {
+      return {
+        kind: DeviceWireResultType.Error,
+        reason: `Could not find ${this.accessory.context.device.DeviceType} in button map`,
       }
-      const alias = dentry.get(button.ButtonNumber)
+    }
+
+    for (const button of buttons) {
+      const alias = this.resolveAlias(dentry, button)
       if (alias === undefined) {
-        return {
-          kind: DeviceWireResultType.Error,
-          reason: `Could not find button ${button.ButtonNumber} in ${this.accessory.context.device.DeviceType} map entry`,
-        }
+        this.platform.log.warn(
+          `Skipping unmapped button ${button.ButtonNumber} (${button.Name}) for ${this.accessory.context.device.DeviceType}`,
+        )
+        continue
       }
 
       // Map href to ButtonNumber for event lookup
       this.hrefToButtonNumber.set(button.href, button.ButtonNumber)
+      this.hrefToAlias.set(button.href, alias)
 
       this.platform.log.debug(
         `setting up ${button.href} named ${button.Name} numbered ${button.ButtonNumber} as ${inspect(
@@ -242,20 +288,62 @@ export class PicoRemote {
       } else {
         this.platform.log.debug('long press disabled')
       }
+      const maxProgrammableSwitchEventValue = this.options.clickSpeedLong !== 'disabled'
+        ? this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS
+        : this.options.clickSpeedDouble !== 'disabled'
+          ? this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS
+          : this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS
       this.platform.log.debug('validValues', validValues)
+
+      const emitMatterGesture = (gesture: 'singlePress' | 'doublePress' | 'longPress') => {
+        if (!this.matterApi) {
+          return
+        }
+
+        const hasComposedParts = Array.isArray((this.accessory as any).parts)
+        const partId = `button-${alias.index}`
+
+        const emitOptions = hasComposedParts
+          ? { partId }
+          : (this.accessory as any).clusters?.switch
+              ? { position: alias.index }
+              : undefined
+
+        if (!emitOptions) {
+          return
+        }
+
+        const switchApi = this.matterApi.switch
+        if (!switchApi || typeof switchApi.emitGesture !== 'function') {
+          this.platform.log.warn(
+            `[Matter] switch.emitGesture is unavailable for ${this.accessory.displayName}; skipping ${gesture}`,
+          )
+          return
+        }
+
+        this.platform.log.debug(
+          `[Matter] Emitting switch gesture ${gesture} for ${this.accessory.displayName} ${'partId' in emitOptions ? `part ${emitOptions.partId}` : `position ${emitOptions.position}`}`,
+        )
+        void switchApi.emitGesture(this.accessory.UUID, gesture, emitOptions).catch((error: unknown) => {
+          this.platform.log.warn(
+            `[Matter] Failed to emit gesture ${gesture} for ${this.accessory.displayName}: ${String(error)}`,
+          )
+        })
+      }
 
       service
         .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
         .setProps({
-          maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
+          maxValue: maxProgrammableSwitchEventValue,
           validValues,
         })
 
       const SINGLE_PRESS = () => {
+        emitMatterGesture('singlePress')
         return service
           .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
           .setProps({
-            maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
+            maxValue: maxProgrammableSwitchEventValue,
             validValues,
           })
           .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS)
@@ -263,10 +351,11 @@ export class PicoRemote {
       let DOUBLE_PRESS: () => Characteristic | null
       if (this.options.clickSpeedDouble !== 'disabled') {
         DOUBLE_PRESS = () => {
+          emitMatterGesture('doublePress')
           return service
             .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
             .setProps({
-              maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
+              maxValue: maxProgrammableSwitchEventValue,
               validValues,
             })
             .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS)
@@ -280,10 +369,11 @@ export class PicoRemote {
       let LONG_PRESS: () => Characteristic | null
       if (this.options.clickSpeedLong !== 'disabled') {
         LONG_PRESS = () => {
+          emitMatterGesture('longPress')
           return service
             .getCharacteristic(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent)
             .setProps({
-              maxValue: this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
+              maxValue: maxProgrammableSwitchEventValue,
               validValues,
             })
             .updateValue(this.platform.api.hap.Characteristic.ProgrammableSwitchEvent.LONG_PRESS)
@@ -323,6 +413,13 @@ export class PicoRemote {
       this.bridge.subscribeToButton(button, this.handleEvent.bind(this))
     }
 
+    if (this.trackers.size === 0) {
+      return {
+        kind: DeviceWireResultType.Error,
+        reason: `No mapped buttons found for ${this.accessory.context.device.DeviceType}`,
+      }
+    }
+
     // LeapClient._empty() clears all taggedSubscriptions on socket close, so we
     // must re-register them on reconnect. Home Assistant's lutron_caseta has no
     // equivalent because pylutron-caseta preserves subscriptions across reconnect;
@@ -345,31 +442,8 @@ export class PicoRemote {
 
   handleEvent(response: Response): void {
     const evt = (response.Body! as OneButtonStatusEvent).ButtonStatus
-    // Look up ButtonNumber from href
     const buttonHref = evt.Button.href
-    const buttonNumber = this.hrefToButtonNumber.get(buttonHref)
-    // Emit Matter cluster events for LevelControl and Scenes clusters if present
-    if (this.matterApi && (this.accessory as any).clusters && buttonNumber !== undefined) {
-      const dentry = BUTTON_MAP.get(this.accessory.context.device.DeviceType)
-      if (dentry) {
-        const alias = dentry.get(buttonNumber)
-        if (alias) {
-          // LevelControl: Raise/Lower
-          if (alias.label.toLowerCase() === 'raise') {
-            this.matterApi.emitClusterEvent(this.accessory, 'levelControl', 'raise')
-          } else if (alias.label.toLowerCase() === 'lower') {
-            this.matterApi.emitClusterEvent(this.accessory, 'levelControl', 'lower')
-          }
-          // Scenes: Button 1-4
-          if (alias.label.toLowerCase().startsWith('button ')) {
-            const sceneNum = Number.parseInt(alias.label.split(' ')[1], 10)
-            if (!Number.isNaN(sceneNum)) {
-              this.matterApi.emitClusterEvent(this.accessory, 'scenes', 'recallScene', sceneNum)
-            }
-          }
-        }
-      }
-    }
+
     const fullName = this.accessory.context.device.FullyQualifiedName.join(' ')
     // Raw Press/Release event from the bridge — fires twice per physical
     // press (once for Press, once for Release). Routed through
@@ -379,24 +453,12 @@ export class PicoRemote {
     logButtonPress(
       this.platform.log,
       this.options.buttonPressLogging,
-      `Button ${evt.Button.href} on Pico remote ${fullName} got action ${evt.ButtonEvent.EventType}`,
+      `Button ${buttonHref} on Pico remote ${fullName} got action ${evt.ButtonEvent.EventType}`,
     )
-    this.trackers.get(evt.Button.href)!.update(evt.ButtonEvent.EventType)
-
-    // Emit Matter cluster event for On/Off cluster if present
-    if (this.matterApi && (this.accessory as any).clusters?.onOff && buttonNumber !== undefined) {
-      const dentry = BUTTON_MAP.get(this.accessory.context.device.DeviceType)
-      if (dentry) {
-        const alias = dentry.get(buttonNumber)
-        if (alias) {
-          if (alias.label.toLowerCase() === 'on') {
-            this.matterApi.emitClusterEvent(this.accessory, 'onOff', 'on')
-          } else if (alias.label.toLowerCase() === 'off') {
-            this.matterApi.emitClusterEvent(this.accessory, 'onOff', 'off')
-          }
-        }
-      }
-    }
+    // Route to the button tracker, which interprets the raw Press/Release
+    // events into single-press, double-press, or long-press gestures.
+    // The tracker's callbacks emit both HAP events and Matter events.
+    this.trackers.get(buttonHref)!.update(evt.ButtonEvent.EventType)
   }
 
   handleUnsolicited(response: Response): void {
@@ -414,30 +476,91 @@ export class PicoRemote {
    */
   public getMatterClusters(): Record<string, any> {
     const type = this.accessory.context.device.DeviceType
+    const fullName = this.accessory.context.device.FullyQualifiedName.join(' ')
+
+    this.platform.log.debug(`[Matter] getMatterClusters called for Pico type: ${type}, display name: ${this.accessory.displayName}`)
+
     const dentry = BUTTON_MAP.get(type)
     if (!dentry) {
+      this.platform.log.warn(`[Matter] PicoRemote type '${type}' not found in BUTTON_MAP (${fullName}), returning empty clusters.`)
       return {}
     }
-    // Gather all button labels for this remote
-    const buttonLabels = Array.from(dentry.values()).map(v => v.label.toLowerCase())
-    const clusters: Record<string, any> = {}
-    // On/Off cluster for remotes with On/Off buttons
-    if (buttonLabels.includes('on') && buttonLabels.includes('off')) {
-      clusters.onOff = { onOff: false }
+
+    this.platform.log.debug(`[Matter] Found BUTTON_MAP entry for '${type}' with ${dentry.size} buttons`)
+
+    // Expose Pico remotes as composed Matter endpoints: one GenericSwitch-like
+    // part per physical button. This aligns better with Home's separate button
+    // presentation than a single multi-position switch endpoint.
+    const genericSwitchDeviceType = this.matterApi?.deviceTypes?.GenericSwitch
+    if (!genericSwitchDeviceType) {
+      this.platform.log.warn(
+        `[Matter] GenericSwitch deviceType is unavailable for '${type}' (${fullName}), matterApi state: ${this.matterApi ? 'present' : 'absent'}`,
+      )
+      return {}
     }
-    // LevelControl cluster for Raise/Lower
-    if (buttonLabels.includes('raise') && buttonLabels.includes('lower')) {
-      clusters.levelControl = { currentLevel: 0, minLevel: 0, maxLevel: 254 }
+
+    // matter.js GenericSwitch requires explicitly adding Switch behavior/features
+    // via .with(...). Without this, the endpoint may be created but not expose
+    // switch event semantics correctly to controllers.
+    let partDeviceType = genericSwitchDeviceType
+    const switchServer = genericSwitchDeviceType?.requirements?.server?.mandatory?.Switch
+    if (typeof genericSwitchDeviceType.with === 'function' && switchServer) {
+      partDeviceType = genericSwitchDeviceType.with(switchServer)
+      this.platform.log.debug(`[Matter] GenericSwitch parts configured with explicit SwitchServer behavior for '${type}'`)
+    } else {
+      this.platform.log.warn(
+        `[Matter] GenericSwitch SwitchServer behavior was not resolved for '${type}'. Endpoint visibility may be limited in some controllers.`,
+      )
     }
-    // Scenes cluster for 4-button scene/zone remotes
-    if (type.includes('4ButtonScene') || type.includes('4ButtonZone')) {
-      clusters.scenes = { sceneCount: 4 }
+
+    this.platform.log.debug(`[Matter] GenericSwitch deviceType available, creating parts for '${type}'`)
+
+    const sortedAliases = Array.from(dentry.values()).sort((a, b) => a.index - b.index)
+    this.platform.log.debug(`[Matter] Creating ${sortedAliases.length} button parts for '${type}'`)
+    const isDoublePressEnabled = this.options.clickSpeedDouble !== 'disabled'
+    const isLongPressEnabled = this.options.clickSpeedLong !== 'disabled'
+
+    const parts = sortedAliases.map((alias) => {
+      const switchCluster: Record<string, number> = {
+        currentPosition: 0,
+        numberOfPositions: 2, // Button has 2 positions: unpressed (0) and pressed (1)
+      }
+
+      // Matter's Switch cluster uses multiPressMax to advertise multi-press support.
+      // Keep this at 1 when double press is disabled so controllers only offer single press.
+      switchCluster.multiPressMax = isDoublePressEnabled ? 2 : 1
+
+      // longPressTime indicates long-press capability. Omit it when disabled.
+      if (isLongPressEnabled) {
+        switchCluster.longPressTime = 1000
+      }
+
+      const part = {
+        id: `button-${alias.index}`,
+        name: alias.label,
+        displayName: alias.label,
+        deviceType: partDeviceType,
+        clusters: {
+          switch: switchCluster,
+        },
+      }
+      this.platform.log.debug(`[Matter] Created part: id=${part.id}, name=${part.name}`)
+      return part
+    })
+
+    if (parts.length === 0) {
+      this.platform.log.warn(`[Matter] No button parts created for Pico type '${type}' (${fullName})`)
+      return {}
     }
-    // 4Button2Group: treat as two on/off pairs
-    if (type.includes('4Button2Group')) {
-      clusters.onOff = { onOff: false }
-      clusters.onOff2 = { onOff: false }
-    }
-    return clusters
+
+    this.platform.log.info(
+      `[Matter] Pico remote '${fullName}' (${type}): creating ${parts.length} composed endpoint(s)`,
+    )
+    this.platform.log.debug(
+      `[Matter] Pico composed parts payload for '${type}': ${JSON.stringify(parts, null, 2)}`,
+    )
+
+    const composed = { parts }
+    return composed
   }
 }
