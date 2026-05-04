@@ -158,15 +158,17 @@ export class LutronCasetaLeap
           return
         }
         // lutron-leap LeapClient request timeout (an Error with a known message pattern)
-        if (reason instanceof Error && reason.message.includes('timed out')) {
+        if (reason instanceof Error && /request with tag.*timed out/.test(reason.message)) {
           this.log.debug('Suppressed lutron-leap request timeout (unhandled rejection):', reason.message)
           return
         }
-        // Unknown unhandled rejection — re-throw so Node.js handles it as fatal.
-        // This preserves the default crash behaviour for any rejection that is not
-        // a known lutron-leap artefact, preventing silent data loss.
+        // Unknown unhandled rejection — schedule a throw on the next tick so
+        // Node.js handles it as a fatal uncaught exception. Throwing directly
+        // inside the 'unhandledRejection' handler in Node.js 15+ causes a
+        // second unhandledRejection event rather than a process exit, so we
+        // use process.nextTick() to break out of the handler's call stack.
         this.log.warn('Unhandled promise rejection (not a known lutron-leap timeout):', reason)
-        throw reason
+        process.nextTick(() => { throw reason })
       })
     }
 
