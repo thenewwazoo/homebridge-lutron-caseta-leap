@@ -527,8 +527,9 @@ export class PicoRemote {
       }
 
       // Matter's Switch cluster uses multiPressMax to advertise multi-press support.
-      // Keep this at 1 when double press is disabled so controllers only offer single press.
-      switchCluster.multiPressMax = isDoublePressEnabled ? 2 : 1
+      // The Matter spec requires multiPressMax >= 2; use 2 regardless of whether
+      // double-press is enabled (we simply won't emit multi-press events when disabled).
+      switchCluster.multiPressMax = 2
 
       // longPressTime indicates long-press capability. Omit it when disabled.
       if (isLongPressEnabled) {

@@ -1,3 +1,11 @@
+## [3.1.2](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v3.1.2) (2026-05-03)
+
+### Bug Fixes
+
+* Pico Matter: set `multiPressMax` to `2` unconditionally — the Matter spec requires this attribute to be `>= 2`, so using `1` when double-press is disabled caused a `[constraint] Constraint "min 2": Value 1 is not within bounds` validation error and prevented all Pico remotes from registering in Matter mode
+
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v3.1.1...v3.1.2
+
 ## [3.1.1](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v3.1.1) (2026-05-03)
 
 ### Features

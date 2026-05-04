@@ -79,7 +79,7 @@ describe('PicoRemote.getMatterClusters', () => {
     expect(parts.map((part: any) => part.deviceType)).toEqual([switchedDeviceType, switchedDeviceType])
   })
 
-  it('advertises only single press support when double and long presses are disabled', () => {
+  it('uses minimum multiPressMax of 2 (Matter spec) and omits longPressTime when both are disabled', () => {
     const switchServer = { name: 'SwitchServer' }
     const genericSwitchDeviceType = {
       with: vi.fn(() => ({ name: 'GenericSwitch+SwitchServer' })),
@@ -113,7 +113,8 @@ describe('PicoRemote.getMatterClusters', () => {
 
     expect(parts).toHaveLength(2)
     for (const part of parts) {
-      expect(part.clusters.switch.multiPressMax).toBe(1)
+      // Matter spec requires multiPressMax >= 2; always 2 regardless of double-press config
+      expect(part.clusters.switch.multiPressMax).toBe(2)
       expect(part.clusters.switch.longPressTime).toBeUndefined()
     }
   })
