@@ -20,6 +20,15 @@
             "type": "boolean",
             "title": "Exclude Pico remotes that are associated with devices directly or in the Lutron app"
           },
+          "clickSpeed": {
+            "type": "string",
+            "title": "Double- and long-press speed",
+            "oneOf": [
+              { "title": "Fast", "enum": ["fast"] },
+              { "title": "Medium (default)", "enum": ["medium"] },
+              { "title": "Slow", "enum": ["slow"] }
+            ]
+          },
           "excludedDeviceTypes": {
             "type": "array",
             "title": "Exclude specific device types (HAP + Matter)",
@@ -46,15 +55,6 @@
             "uniqueItems": true,
             "default": []
           },
-          "clickSpeed": {
-            "type": "string",
-            "title": "Double- and long-press speed",
-            "oneOf": [
-              { "title": "Fast", "enum": ["fast"] },
-              { "title": "Medium (default)", "enum": ["medium"] },
-              { "title": "Slow", "enum": ["slow"] }
-            ]
-          },
           "logLevel": {
             "type": "string",
             "title": "Log Verbosity",
@@ -69,11 +69,11 @@
           "buttonPressLogging": {
             "type": "string",
             "title": "Button Press Logging",
-            "description": "How verbose to be about button-press events specifically. 'Debug' is the default and means presses are quiet in normal logs (visible only with global Homebridge debug). Use 'Info' if you want to see presses while wiring up automations without enabling global debug. Use 'Silent' to drop them entirely.",
-            "default": "debug",
+            "description": "How verbose to be about button-press events specifically. 'Info' is the default so presses are visible in normal logs. Use 'Debug' to show presses only with global Homebridge debug enabled. Use 'Silent' to drop them entirely.",
+            "default": "info",
             "oneOf": [
-              { "title": "Debug — visible only with global debug (default)", "enum": ["debug"] },
-              { "title": "Info — visible in normal logs", "enum": ["info"] },
+              { "title": "Info — visible in normal logs (default)", "enum": ["info"] },
+              { "title": "Debug — visible only with global debug", "enum": ["debug"] },
               { "title": "Silent — never logged", "enum": ["silent"] }
             ]
           }
@@ -84,12 +84,6 @@
         "type": "boolean",
         "title": "Enable Matter (requires Homebridge v2.0+)",
         "description": "When enabled, the plugin will use the Homebridge Matter API to register accessories if it is available.",
-        "default": true
-      },
-      "preferMatter": {
-        "type": "boolean",
-        "title": "Prefer Matter over HAP",
-        "description": "When both Matter and HAP are available, prefer the Matter API for accessory registration.",
         "default": true
       },
       "secrets": {
@@ -108,84 +102,6 @@
     }
   },
   "layout": [
-    {
-      "key": "options",
-      "type": "div",
-      "displayFlex": true,
-      "items": [
-        {
-          "key": "options.filterPico",
-          "notitle": false,
-          "type": "boolean",
-          "flex": "1 1 150px"
-        },
-        {
-          "key": "options.clickSpeed",
-          "notitle": false,
-          "type": "string",
-          "flex": "1 1 150px"
-        }
-      ]
-
-    },
-    {
-      "key": "options.excludedDeviceTypes",
-      "type": "checkboxes",
-      "title": "Exclude specific device types (HAP + Matter)",
-      "description": "Select one or more device types to exclude from registration.",
-      "titleMap": [
-        { "name": "WallDimmer", "value": "WallDimmer" },
-        { "name": "WallSwitch", "value": "WallSwitch" },
-        { "name": "SerenaTiltOnlyWoodBlind", "value": "SerenaTiltOnlyWoodBlind" },
-        { "name": "RPSOccupancySensor", "value": "RPSOccupancySensor" },
-        { "name": "Pico2Button", "value": "Pico2Button" },
-        { "name": "Pico2ButtonRaiseLower", "value": "Pico2ButtonRaiseLower" },
-        { "name": "Pico3Button", "value": "Pico3Button" },
-        { "name": "Pico3ButtonRaiseLower", "value": "Pico3ButtonRaiseLower" },
-        { "name": "Pico4Button", "value": "Pico4Button" },
-        { "name": "Pico4Button2Group", "value": "Pico4Button2Group" },
-        { "name": "Pico4ButtonScene", "value": "Pico4ButtonScene" },
-        { "name": "Pico4ButtonZone", "value": "Pico4ButtonZone" },
-        { "name": "PaddleSwitchPico", "value": "PaddleSwitchPico" },
-        { "name": "FourGroupRemote", "value": "FourGroupRemote" }
-      ]
-    },
-    {
-      "type": "div",
-      "displayFlex": true,
-      "items": [
-        {
-          "key": "options.logLevel",
-          "notitle": false,
-          "type": "string",
-          "flex": "1 1 200px"
-        },
-        {
-          "key": "options.buttonPressLogging",
-          "notitle": false,
-          "type": "string",
-          "flex": "1 1 200px"
-        }
-      ]
-    },
-    {
-      "type": "div",
-      "displayFlex": true,
-      "items": [
-        {
-          "key": "enableMatter",
-          "notitle": false,
-          "type": "boolean",
-          "flex": "1 1 150px"
-        },
-        {
-          "key": "preferMatter",
-          "notitle": false,
-          "type": "boolean",
-          "flex": "1 1 150px"
-        }
-      ]
-    },
     {
       "key": "secrets",
       "type": "array",
@@ -227,6 +143,84 @@
       }
       ]
 
+    },
+    {
+      "type": "fieldset",
+      "title": "Global Options",
+      "items": [
+        {
+          "key": "options",
+          "type": "div",
+          "displayFlex": true,
+          "items": [
+            {
+              "key": "options.filterPico",
+              "notitle": false,
+              "type": "boolean",
+              "flex": "1 1 150px"
+            },
+            {
+              "key": "options.clickSpeed",
+              "notitle": false,
+              "type": "string",
+              "flex": "1 1 150px"
+            }
+          ]
+
+        },
+        {
+          "type": "div",
+          "displayFlex": true,
+          "items": [
+            {
+              "key": "enableMatter",
+              "notitle": false,
+              "type": "boolean",
+              "flex": "1 1 300px"
+            }
+          ]
+        },
+        {
+          "key": "options.excludedDeviceTypes",
+          "type": "checkboxes",
+          "title": "Exclude specific device types (HAP + Matter)",
+          "description": "Select one or more device types to exclude from registration.",
+          "titleMap": [
+            { "name": "WallDimmer", "value": "WallDimmer" },
+            { "name": "WallSwitch", "value": "WallSwitch" },
+            { "name": "SerenaTiltOnlyWoodBlind", "value": "SerenaTiltOnlyWoodBlind" },
+            { "name": "RPSOccupancySensor", "value": "RPSOccupancySensor" },
+            { "name": "Pico2Button", "value": "Pico2Button" },
+            { "name": "Pico2ButtonRaiseLower", "value": "Pico2ButtonRaiseLower" },
+            { "name": "Pico3Button", "value": "Pico3Button" },
+            { "name": "Pico3ButtonRaiseLower", "value": "Pico3ButtonRaiseLower" },
+            { "name": "Pico4Button", "value": "Pico4Button" },
+            { "name": "Pico4Button2Group", "value": "Pico4Button2Group" },
+            { "name": "Pico4ButtonScene", "value": "Pico4ButtonScene" },
+            { "name": "Pico4ButtonZone", "value": "Pico4ButtonZone" },
+            { "name": "PaddleSwitchPico", "value": "PaddleSwitchPico" },
+            { "name": "FourGroupRemote", "value": "FourGroupRemote" }
+          ]
+        },
+        {
+          "type": "div",
+          "displayFlex": true,
+          "items": [
+            {
+              "key": "options.logLevel",
+              "notitle": false,
+              "type": "string",
+              "flex": "1 1 200px"
+            },
+            {
+              "key": "options.buttonPressLogging",
+              "notitle": false,
+              "type": "string",
+              "flex": "1 1 200px"
+            }
+          ]
+        }
+      ]
     }
   ]
 

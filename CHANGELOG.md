@@ -1,12 +1,32 @@
-## [3.1.2](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v3.1.2) (2026-05-03)
+## [3.1.3](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v3.1.3) (2026-05-04)
+
+### Bug Fixes
+* filterPico two-stage check: replace the always-true `AffectedZones !== undefined` guard (which incorrectly skipped audio Picos, fan Picos, and scene-only Picos) with a proper two-stage filter — Stage 1 checks for non-empty `AffectedZones` arrays (zone-wired Picos); Stage 2 fetches each button's `ProgrammingModel` → `Preset` and checks for any non-empty `*Assignments` array (scene-programmed Picos) ([#233](https://github.com/homebridge-plugins/homebridge-lutron/pull/233))
+
+### Other Changes
+* plugin/package rename: publish under `@homebridge-plugins/homebridge-lutron` and align plugin identity (`PLUGIN_NAME`, UI certificate commonName, npm metadata) with the new package name
+* lint compatibility: resolve constructor-name linting by instantiating Homebridge platform accessories via an uppercase constructor alias (`PlatformAccessoryCtor`)
+* branding/docs normalization: update README/docs user-facing naming to "Homebridge Lutron" / "Lutron", refresh generated TypeDoc output, and update repository/wiki/release links to `homebridge-plugins/homebridge-lutron`
+* dependency metadata: bump Homebridge beta compatibility from `^2.0.0-beta.110` to `^2.0.0-beta.111`
+
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v3.1.2...v3.1.3
+
+## [3.1.2](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v3.1.2) (2026-05-03)
 
 ### Bug Fixes
 
 * Pico Matter: set `multiPressMax` to `2` unconditionally — the Matter spec requires this attribute to be `>= 2`, so using `1` when double-press is disabled caused a `[constraint] Constraint "min 2": Value 1 is not within bounds` validation error and prevented all Pico remotes from registering in Matter mode
+* button-press visibility: restore default button press logging to `info` so physical Pico presses are visible in normal Homebridge logs without requiring global debug mode
+* config simplification: remove redundant `preferMatter` toggle and use `enableMatter` as the single Matter on/off control with HAP fallback behavior unchanged
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v3.1.1...v3.1.2
+### Maintenance
 
-## [3.1.1](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v3.1.1) (2026-05-03)
+* config UI: reorder sections for clearer flow (general options, Matter toggle, device exclusions, logging, then bridge secrets)
+* docs/comments: align Logger and button-tracker default descriptions with the updated `buttonPressLogging` default behavior
+
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v3.1.1...v3.1.2
+
+## [3.1.1](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v3.1.1) (2026-05-03)
 
 ### Features
 
@@ -33,58 +53,58 @@
 * align imports/file naming with ESM casing expectations and update docs output
 * bump Homebridge beta compatibility to `^2.0.0-beta.110` and refresh lint/tooling dependencies
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v3.1.0...v3.1.1
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v3.1.0...v3.1.1
 
-## [3.1.0](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v3.1.0) (2026-04-29)
+## [3.1.0](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v3.1.0) (2026-04-29)
 
 ### Features
 
-* configurable log verbosity (logLevel + buttonPressLogging) ([#228](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/issues/228)) ([40b1fd9](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/commit/40b1fd9116c2b8b4877d70001ddac4f6c3f7ee5c)) 
+* configurable log verbosity (logLevel + buttonPressLogging) ([#228](https://github.com/homebridge-plugins/homebridge-lutron/issues/228)) ([40b1fd9](https://github.com/homebridge-plugins/homebridge-lutron/commit/40b1fd9116c2b8b4877d70001ddac4f6c3f7ee5c)) 
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v3.0.5...v3.1.0
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v3.0.5...v3.1.0
 
-## [3.0.5](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v3.0.5) (2026-04-27)
-
-### Bug Fixes
-
-* cached accessory loss on Skipped, listener leak, inventory retry ([#227](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/issues/227)) ([4856be2](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/commit/4856be2accc95aec4a1cf778b4bef1610540ee0e))
-
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v3.0.4...v3.0.5
-
-## [3.0.4](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v3.0.4) (2026-04-25)
+## [3.0.5](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v3.0.5) (2026-04-27)
 
 ### Bug Fixes
 
-* This accessory will not be registered. ([fb3c249](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/commit/fb3c2492cdcb30b2abe58aa9368be7e410d396c2))
-* This accessory will not be registered. ([#225](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/issues/225)) ([ff7cadf](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/commit/ff7cadfe493d38933740398a4a6f4faf6ad0b6f3)) 
+* cached accessory loss on Skipped, listener leak, inventory retry ([#227](https://github.com/homebridge-plugins/homebridge-lutron/issues/227)) ([4856be2](https://github.com/homebridge-plugins/homebridge-lutron/commit/4856be2accc95aec4a1cf778b4bef1610540ee0e))
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v3.0.3...v3.0.4
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v3.0.4...v3.0.5
 
-## [3.0.3](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v3.0.3) (2026-04-23)
+## [3.0.4](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v3.0.4) (2026-04-25)
+
+### Bug Fixes
+
+* This accessory will not be registered. ([fb3c249](https://github.com/homebridge-plugins/homebridge-lutron/commit/fb3c2492cdcb30b2abe58aa9368be7e410d396c2))
+* This accessory will not be registered. ([#225](https://github.com/homebridge-plugins/homebridge-lutron/issues/225)) ([ff7cadf](https://github.com/homebridge-plugins/homebridge-lutron/commit/ff7cadfe493d38933740398a4a6f4faf6ad0b6f3)) 
+
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v3.0.3...v3.0.4
+
+## [3.0.3](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v3.0.3) (2026-04-23)
 
 ### What's Changed
 * fix: This accessory will not be registered. 
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v3.0.2...v3.0.3
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v3.0.2...v3.0.3
 
-## [3.0.2](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v3.0.2) (2026-04-23)
+## [3.0.2](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v3.0.2) (2026-04-23)
 
 ### What's Changed
-* fix: This accessory will not be registered. ([fb3c249](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/commit/fb3c2492cdcb30b2abe58aa9368be7e410d396c2))
+* fix: This accessory will not be registered. ([fb3c249](https://github.com/homebridge-plugins/homebridge-lutron/commit/fb3c2492cdcb30b2abe58aa9368be7e410d396c2))
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v3.0.1...v3.0.2
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v3.0.1...v3.0.2
 
-## [3.0.1](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v3.0.1) (2026-04-23)
+## [3.0.1](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v3.0.1) (2026-04-23)
 
 ## What's Changed
-* Don’t automatically unregister on error getting device info by @dfct in https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/pull/207
+* Don’t automatically unregister on error getting device info by @dfct in https://github.com/homebridge-plugins/homebridge-lutron/pull/207
 
 ## New Contributors
-* @dfct made their first contribution in https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/pull/207
+* @dfct made their first contribution in https://github.com/homebridge-plugins/homebridge-lutron/pull/207
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v3.0.0...v3.0.1
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v3.0.0...v3.0.1
 
-## [3.0.0](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v3.0.0) (2026-04-23)
+## [3.0.0](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v3.0.0) (2026-04-23)
 
 ### Major Changes
 - **Matter API support**: Adds Homebridge v2+ Matter API support with runtime fallback to HAP for legacy Homebridge versions.
@@ -97,39 +117,39 @@
 - Homebridge v2: Matter is enabled by default; fallback to HAP if needed.
 - See README for migration and troubleshooting tips.
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.8.2...v3.0.0
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.8.2...v3.0.0
 
-## [2.8.2](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.8.2) (2025-09-18)
+## [2.8.2](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.8.2) (2025-09-18)
 
 ### What's Changed
 - No notable changes
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.8.1...v2.8.2
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.8.1...v2.8.2
 
-## [2.8.1](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.8.1) (2025-03-04)
+## [2.8.1](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.8.1) (2025-03-04)
 
 ### What's Changed
 - Housekeeping and updated dependencies
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.8.0...v2.8.1
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.8.0...v2.8.1
 
-## [2.8.0](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.8.0) (2025-01-25)
+## [2.8.0](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.8.0) (2025-01-25)
 
 ### What's Changed
 - Bump Node Version to `v20` or `v22`
 - Housekeeping and updated dependencies
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.7.0...v2.8.0
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.7.0...v2.8.0
 
-## [2.7.0](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.7.0) (2025-01-25)
+## [2.7.0](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.7.0) (2025-01-25)
 
 ### What's Changed
 - Convert to ESModule
 - Housekeeping and updated dependencies
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.6.0...v2.7.0
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.6.0...v2.7.0
 
-## [2.6.0](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.6.0) (2024-07-04)
+## [2.6.0](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.6.0) (2024-07-04)
 
 ### What's Changed
 - Hide double/long press action in Home app when disabled (#143) (#157) @donavanbecker
@@ -142,45 +162,45 @@
 - Add `Name` & `ConfiguredName` to AccessoryInformation so Names sync from Lutron app to Home app. (@donavanbecker)
 - Housekeeping and updated dependencies
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.5.3...v2.6.0
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.5.3...v2.6.0
 
-## [2.5.3](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.5.3) (2023-09-24)
+## [2.5.3](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.5.3) (2023-09-24)
 
 ### What's Changed
 - Many thanks for @Bleufarmer for sponsoring support for the new paddle switch Pico!
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.5.0...v2.5.3
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.5.0...v2.5.3
 
-## [2.5.2](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.5.2) (2023-09-18)
+## [2.5.2](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.5.2) (2023-09-18)
 
 ### What's Changed
 - Explicitly tell npm to ignore tags file already ignored by git
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.5.1...v2.5.2
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.5.1...v2.5.2
 
-## [2.5.1](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.5.1) (2023-09-17)
+## [2.5.1](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.5.1) (2023-09-17)
 
 ### What's Changed
 - Greatly increase the max listeners
 - Update to use corrected lutron-leap v3.4.2
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.5.0...v2.5.1
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.5.0...v2.5.1
 
-## [2.5.0](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.5.0) (2023-09-17)
+## [2.5.0](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.5.0) (2023-09-17)
 
 ### What's Changed
 - Thanks to @thibaulf, reconnection to the Smart Hub is fixed! You should see no more need to restart Homebridge due to your Picos and occupancy sensors stopping working.
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.4.3...v2.5.0
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.4.3...v2.5.0
 
-## [2.4.3](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.4.3) (2022-11-24)
+## [2.4.3](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.4.3) (2022-11-24)
 
 ### What's Changed
 - This release makes the plugin not show things as errors that aren't errors. Now you can rest a bit easier when reading logs. :)
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.4.2...v2.4.3
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.4.2...v2.4.3
 
-## [2.4.2](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.4.2) (2022-08-19)
+## [2.4.2](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.4.2) (2022-08-19)
 
 ### What's Changed
 - This is a bugfix release that makes the plugin properly remove Picos and Blinds from HomeKit when they're configured to be filtered.
@@ -188,93 +208,93 @@
 - Fix broken lutron-leap-js ver spec
 - Refactor to reduce scary log lines and noise
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.4.1...v2.4.2
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.4.1...v2.4.2
 
-## [2.4.1](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.4.1) (2022-07-29)
+## [2.4.1](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.4.1) (2022-07-29)
 
 ### What's Changed
 - Fix filtered devices that don't disappear
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.4.0...v2.4.1
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.4.0...v2.4.1
 
-## [2.4.0](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.4.0) (2022-07-24)
+## [2.4.0](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.4.0) (2022-07-24)
 
 ### What's Changed
 - Pico remotes now support long- and double-press in HomeKit! After you update, you'll see the new options in your HomeKit app. Now you can attach scenes and actions to single-press, double-press, and press-and-hold actions on your Picos. Don't like it? No problem! You can disable them, as well as configure the speeds, individually in the settings. By default, this is turned on after this update.
 - Picos that are paired in the Lutron app can be hidden! If you've got Picos that already have a job, either set up in the Lutron app or paired directly with a device, you can now exclude/hide them from HomeKit on a global basis. This is not turned on by default.
 - Serena Tilt-Only Wood Blinds can be excluded from plug-in support! Ever since Lutron added native HomeKit support for the Serena wood blinds to the Lutron app, that functionality has been redundant. Now there is an option in the settings to exclude them from the plug-in. This is not turned on by default.
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.3.9...v2.4.0
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.3.9...v2.4.0
 
-## [2.3.9](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.3.9) (2022-07-29)
+## [2.3.9](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.3.9) (2022-07-29)
 
 ### What's Changed
 - This release adds support for two-zone, four-button Pico remotes. Many thanks to @tneems, who contributed the code!
 - Fix cache restore for Pico4Button2Group (#52)
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.3.8...v2.3.9
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.3.8...v2.3.9
 
-## [2.3.8](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.3.8) (2022-06-23)
+## [2.3.8](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.3.8) (2022-06-23)
 
 ### What's Changed
 - Housekeeping and updated dependencies
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.3.7...v2.3.8
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.3.7...v2.3.8
 
-## [2.3.7](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.3.7) (2022-05-09)
+## [2.3.7](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.3.7) (2022-05-09)
 
 ### What's Changed
 - Update lutron-leap-js to 3.0.6
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.3.6...v2.3.7
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.3.6...v2.3.7
 
-## [2.3.6](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.3.6) (2022-05-07)
+## [2.3.6](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.3.6) (2022-05-07)
 
 ### What's Changed
 - Add support for Pico 4-button scene and zone remotes.
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.3.5...v2.3.6
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.3.5...v2.3.6
 
-## [2.3.5](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.3.5) (2022-05-06)
+## [2.3.5](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.3.5) (2022-05-06)
 
 ### What's Changed
 - This is a minor release that should improve stability.
     - Adopt lutron-leap-js 3.0.5
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.3.4...v2.3.5
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.3.4...v2.3.5
 
-## [2.3.4](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.3.4) (2022-04-10)
+## [2.3.4](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.3.4) (2022-04-10)
 
 ### What's Changed
 - Adopt fixed lutron-leap-js lib
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.3.3...v2.3.4
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.3.3...v2.3.4
 
-## [2.3.3](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.3.3) (2022-03-16)
+## [2.3.3](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.3.3) (2022-03-16)
 
 ### What's Changed
 - Update lutron-leap-js to 3.0.2 for client fixes
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.3.2...v2.3.3
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.3.2...v2.3.3
 
-## [2.3.2](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.3.2) (2022-03-13)
+## [2.3.2](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.3.2) (2022-03-13)
 
 ### What's Changed
 - Check for lower-case bridge IDs when one is announced
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.3.1...v2.3.2
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.3.1...v2.3.2
 
-## [2.3.1](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.3.1) (2022-03-13)
+## [2.3.1](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.3.1) (2022-03-13)
 
 ### What's Changed
 - Bump lutron-leap-js version for increased ping
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.3.0...v2.3.1
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.3.0...v2.3.1
 
-## [2.3.0](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v2.3.0) (2022-03-02)
+## [2.3.0](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v2.3.0) (2022-03-02)
 
 ### What's Changed
 - This release adds support for PD-OSENS Caseta occupancy sensors in Homekit! Now you can use your Caseta occupancy sensors without having to pair them to another device. They will appear in Homekit like any other dedicated motion sensor.
 - This release also adds support for one-click pairing with Caseta Smart Bridge 2 devices. No more downloading Python and running scripts and copying files. Now it's all in a slick new UI.
 
-**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/compare/v2.2.3...v2.3.0
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-lutron/compare/v2.2.3...v2.3.0

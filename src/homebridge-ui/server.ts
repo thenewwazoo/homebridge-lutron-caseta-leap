@@ -111,7 +111,7 @@ class PluginUiServer extends HomebridgePluginUiServer {
     csr.setSubject([
       {
         name: 'commonName',
-        value: 'homebridge-lutron-caseta-leap',
+        value: 'homebridge-lutron',
       },
     ])
     csr.sign(keys.privateKey as forge.pki.rsa.PrivateKey)

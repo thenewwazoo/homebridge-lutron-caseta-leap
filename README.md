@@ -1,11 +1,11 @@
 <span align="center">
 
-<a href="https://github.com/homebridge/verified/blob/master/verified-plugins.json"><img alt="homebridge-verified" src="https://raw.githubusercontent.com/homebridge/plugins/latest/icons/homebridge-lutron-caseta-leap.png?sanitize=true" width="150px"></a>
+<a href="https://github.com/homebridge/verified/blob/master/verified-plugins.json"><img alt="homebridge-verified" src="https://raw.githubusercontent.com/homebridge/plugins/latest/icons/homebridge-lutron.png?sanitize=true" width="150px"></a>
 
-# LutronCasetaLeap
+# Homebridge Lutron
 
-<a href="https://www.npmjs.com/package/@homebridge-plugins/homebridge-lutron-caseta-leap"><img title="npm version" src="https://badgen.net/npm/v/@homebridge-plugins/homebridge-lutron-caseta-leap?icon=npm&label" ></a>
-<a href="https://www.npmjs.com/package/@homebridge-plugins/homebridge-lutron-caseta-leap"><img title="npm downloads" src="https://badgen.net/npm/dt/@homebridge-plugins/homebridge-lutron-caseta-leap?label=downloads" ></a>
+<a href="https://www.npmjs.com/package/@homebridge-plugins/homebridge-lutron"><img title="npm version" src="https://badgen.net/npm/v/@homebridge-plugins/homebridge-lutron?icon=npm&label" ></a>
+<a href="https://www.npmjs.com/package/@homebridge-plugins/homebridge-lutron"><img title="npm downloads" src="https://badgen.net/npm/dt/@homebridge-plugins/homebridge-lutron?label=downloads" ></a>
 <a href="https://discord.gg/8fpZA4S"><img title="discord-lutron" src="https://badgen.net/discord/online-members/8fpZA4S?icon=discord&label=discord" ></a>
 <a href="https://paypal.me/donavanbecker"><img title="donate" src="https://badgen.net/badge/donate/paypal/yellow" ></a>
 <a href="https://github.com/homebridge/homebridge/wiki/Verified-Plugins"><img title="donate" src="https://badgen.net/badge/homebridge/scoped/purple" ></a>
@@ -112,11 +112,11 @@ I'd love to have complete, tested support of all remote types. If you have hardw
 
 If you need find a bug, need help with this plugin, or have questions, the best way to reach me is via a Github Issue. Please don't be shy about opening one. You can also reach me via the email address in my Github profile.
 
-This plugin doesn't often change, but when I add big features or make big changes, I will occasionally join the [`#lutron-caseta-leap`](https://discord.com/channels/432663330281226270/927991341923852389) channel on the [Homebridge Discord server](https://discord.gg/RcV7fa8).
+This plugin doesn't often change, but when I add big features or make big changes, I will occasionally join the [Lutron channel](https://discord.com/channels/432663330281226270/927991341923852389) on the [Homebridge Discord server](https://discord.gg/RcV7fa8).
 
 ### Something weird is happening / The plugin is running slowly / Devices aren't appearing
 
-If the plugin is generally misbehaving, users have reported success in running this plugin in a [child bridge](https://github.com/homebridge/homebridge/wiki/Child-Bridges). Doing this will require adding the bridge as a separate device and re-configuring your devices, which may or may not be acceptable. [This issue](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/issues/96) has some steps to accomplishing that.
+If the plugin is generally misbehaving, users have reported success in running this plugin in a [child bridge](https://github.com/homebridge/homebridge/wiki/Child-Bridges). Doing this will require adding the bridge as a separate device and re-configuring your devices, which may or may not be acceptable. [This issue](https://github.com/homebridge-plugins/homebridge-lutron/issues/96) has some steps to accomplishing that.
 
 Why does this change things? To be honest, I don't really know (and not knowing really bugs me). I've tried my best to follow best practices in designing this plugin but it seems to help sometimes. :(
 
