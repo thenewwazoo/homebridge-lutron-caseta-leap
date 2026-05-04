@@ -5,5 +5,4 @@ export const PLATFORM_NAME = 'LutronCasetaLeap'
 
 export interface LutronCasetaLeapPluginConfig extends PlatformConfig {
   enableMatter?: boolean
-  preferMatter?: boolean
 }

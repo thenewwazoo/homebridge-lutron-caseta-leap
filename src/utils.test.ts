@@ -11,23 +11,19 @@ import { createPlatformProxy, normalizeConfig } from './utils.js'
 describe('normalizeConfig', () => {
   it('returns defaults when called with undefined', () => {
     const cfg = normalizeConfig(undefined)
-    expect(cfg.preferMatter).toBe(true)
     expect(cfg.enableMatter).toBe(true)
   })
 
   it('applies defaults for fields absent in raw config', () => {
     const cfg = normalizeConfig({ platform: 'LutronCasetaLeap' } as PlatformConfig)
-    expect(cfg.preferMatter).toBe(true)
     expect(cfg.enableMatter).toBe(true)
   })
 
   it('respects explicit false values over defaults', () => {
     const cfg = normalizeConfig({
       platform: 'LutronCasetaLeap',
-      preferMatter: false,
       enableMatter: false,
     } as PlatformConfig)
-    expect(cfg.preferMatter).toBe(false)
     expect(cfg.enableMatter).toBe(false)
   })
 
@@ -87,15 +83,6 @@ describe('createPlatformProxy – platform selection', () => {
     const Matter = vi.fn()
     const Proxy = createPlatformProxy(HAP, Matter)
     new Proxy({}, { ...baseConfig, enableMatter: false }, makeApi(true, true))
-    expect(HAP).toHaveBeenCalledOnce()
-    expect(Matter).not.toHaveBeenCalled()
-  })
-
-  it('uses HAP when preferMatter is false even if Matter is available', () => {
-    const HAP = vi.fn()
-    const Matter = vi.fn()
-    const Proxy = createPlatformProxy(HAP, Matter)
-    new Proxy({}, { ...baseConfig, preferMatter: false }, makeApi(true, true))
     expect(HAP).toHaveBeenCalledOnce()
     expect(Matter).not.toHaveBeenCalled()
   })

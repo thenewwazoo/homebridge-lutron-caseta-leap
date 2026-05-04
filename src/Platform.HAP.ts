@@ -179,11 +179,11 @@ export class LutronCasetaLeap
         // Defaults reflect the post-reclassification "sane quiet by default"
         // posture. logLevel 'normal' means the wrapper is a passthrough; the
         // quietness comes from the call sites being correctly classified.
-        // buttonPressLogging 'debug' means presses are not visible in normal
-        // logs (a behavior change from earlier versions); use 'info' to
-        // restore the old chatty behavior, or 'silent' to drop them entirely.
+        // buttonPressLogging 'info' keeps press events visible in normal logs.
+        // Users can set 'debug' to only show presses with global Homebridge
+        // debug enabled, or 'silent' to drop them entirely.
         logLevel: 'normal',
-        buttonPressLogging: 'debug',
+        buttonPressLogging: 'info',
       },
       config.options,
       { excludedDeviceTypes },

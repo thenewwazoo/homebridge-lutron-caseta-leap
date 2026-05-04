@@ -1,9 +1,10 @@
+import type { GlobalOptions } from './Platform.HAP.js'
+
 import { describe, expect, it, vi } from 'vitest'
 
 import { PicoRemote } from './PicoRemote.js'
-import type { GlobalOptions } from './Platform.HAP.js'
 
-describe('PicoRemote.getMatterClusters', () => {
+describe('picoRemote.getMatterClusters', () => {
   function createPlatformAndAccessory(deviceType = 'Pico2Button') {
     const platform = {
       log: {

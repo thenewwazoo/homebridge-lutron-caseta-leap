@@ -8,7 +8,6 @@ import type { LutronCasetaLeapPluginConfig } from './settings.js'
  */
 export function normalizeConfig(raw?: PlatformConfig): LutronCasetaLeapPluginConfig {
   const defaults: Partial<LutronCasetaLeapPluginConfig> = {
-    preferMatter: true,
     enableMatter: true,
   }
   if (!raw) {
@@ -24,8 +23,8 @@ export function normalizeConfig(raw?: PlatformConfig): LutronCasetaLeapPluginCon
  * required by the `DynamicPlatformPlugin` interface to the chosen
  * implementation so that cached accessories are always tracked correctly.
  *
- * @param HAPPlatform  The standard HAP platform class constructor.
- * @param MatterPlatform  The Matter platform class constructor.
+ * @param HAPPlatform The standard HAP platform class constructor.
+ * @param MatterPlatform The Matter platform class constructor.
  * @returns A proxy class that delegates to the correct platform implementation.
  */
 export function createPlatformProxy(HAPPlatform: any, MatterPlatform: any): any {
@@ -35,14 +34,12 @@ export function createPlatformProxy(HAPPlatform: any, MatterPlatform: any): any 
 
     constructor(log: any, config: PlatformConfig, api: any) {
       const cfg = normalizeConfig(config)
-      const preferMatter = cfg.preferMatter as boolean
       const enableMatter = cfg.enableMatter as boolean
       const matterAvailable = !!(api?.isMatterAvailable?.() && api?.isMatterEnabled?.())
 
-      if (enableMatter && preferMatter && MatterPlatform && matterAvailable) {
+      if (enableMatter && MatterPlatform && matterAvailable) {
         this.impl = new MatterPlatform(log, cfg, api)
-      }
-      else {
+      } else {
         // Fallback to HAP
         this.impl = new HAPPlatform(log, cfg, api)
       }

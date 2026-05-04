@@ -517,7 +517,6 @@ export class PicoRemote {
 
     const sortedAliases = Array.from(dentry.values()).sort((a, b) => a.index - b.index)
     this.platform.log.debug(`[Matter] Creating ${sortedAliases.length} button parts for '${type}'`)
-    const isDoublePressEnabled = this.options.clickSpeedDouble !== 'disabled'
     const isLongPressEnabled = this.options.clickSpeedLong !== 'disabled'
 
     const parts = sortedAliases.map((alias) => {
