@@ -29,9 +29,9 @@ export type LogLevelOption = 'normal' | 'quiet' | 'errors-only'
  *
  *   'info'   — visible at info level (legacy behavior; useful when wiring
  *              up automations and you want to see presses without enabling
- *              global Homebridge debug).
- *   'debug'  — visible at debug level only (new default). Quiet in normal
- *              logs; flip Homebridge's global debug to see presses.
+ *              global Homebridge debug). Default.
+ *   'debug'  — visible at debug level only. Quiet in normal logs; flip
+ *              Homebridge's global debug to see presses.
  *   'silent' — never log presses at any level.
  */
 export type ButtonPressLogLevel = 'info' | 'debug' | 'silent'

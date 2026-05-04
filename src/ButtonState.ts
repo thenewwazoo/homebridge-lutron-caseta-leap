@@ -82,10 +82,10 @@ export class ButtonTracker {
     clickSpeedDouble = 'default',
     clickSpeedLong = 'default',
     isUpDownButton = false,
-    // Default 'debug' matches the platform's optionsFromConfig default —
+    // Default 'info' matches the platform's optionsFromConfig default —
     // safe even if a caller (e.g. a future device type or a test) forgets
     // to thread the option through.
-    private buttonPressLogging: ButtonPressLogLevel = 'debug',
+    private buttonPressLogging: ButtonPressLogLevel = 'info',
   ) {
     log.debug(`btrk ${this.href} created speed ${clickSpeedDouble} dbl ${clickSpeedLong} long`)
 
