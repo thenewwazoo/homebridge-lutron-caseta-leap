@@ -1,0 +1,128 @@
+import type { CharacteristicGetCallback, CharacteristicSetCallback, CharacteristicValue, PlatformAccessory, Service } from 'homebridge'
+import type { DeviceDefinition, OneZoneStatus, Response, SmartBridge } from 'lutron-leap'
+
+import type { LutronCasetaLeap } from './Platform.HAP.js'
+
+export class WallSwitch {
+  private service: Service
+  private device: DeviceDefinition
+
+  constructor(
+    private readonly platform: LutronCasetaLeap,
+    private readonly accessory: PlatformAccessory,
+    private readonly bridge: SmartBridge,
+    private readonly deviceDef: DeviceDefinition,
+  ) {
+    this.device = accessory.context.device
+
+    this.accessory
+      .getService(this.platform.api.hap.Service.AccessoryInformation)!
+      .setCharacteristic(this.platform.api.hap.Characteristic.Manufacturer, 'Lutron Electronics Co., Inc')
+      .setCharacteristic(this.platform.api.hap.Characteristic.Model, this.device.ModelNumber)
+      .setCharacteristic(this.platform.api.hap.Characteristic.Name, this.device.FullyQualifiedName.join(' '))
+      .setCharacteristic(this.platform.api.hap.Characteristic.ConfiguredName, this.device.FullyQualifiedName.join(' '))
+      .setCharacteristic(this.platform.api.hap.Characteristic.SerialNumber, this.device.SerialNumber.toString())
+
+    this.service
+      = this.accessory.getService(this.platform.api.hap.Service.Switch)
+        || this.accessory.addService(this.platform.api.hap.Service.Switch)
+
+    this.service.setCharacteristic(
+      this.platform.api.hap.Characteristic.Name,
+      this.device.FullyQualifiedName.join(' '),
+    )
+
+    // Set up handlers for On characteristic
+    this.service.getCharacteristic(this.platform.api.hap.Characteristic.On)
+      .on('set', this.handleOnSet.bind(this))
+      .on('get', this.handleOnGet.bind(this))
+  }
+
+  async initialize() {
+    // Subscribe to bridge unsolicited updates for this device
+    this.platform.on('unsolicited', (response: Response) => {
+      if (response.Header.MessageBodyType === 'OneZoneStatus') {
+        const status = (response.Body as OneZoneStatus).ZoneStatus
+        const statusZoneHref = typeof status.Zone === 'string'
+          ? status.Zone
+          : (typeof status.Zone === 'object'
+              && status.Zone !== null
+              && 'href' in status.Zone
+              && typeof status.Zone.href === 'string')
+              ? status.Zone.href
+              : undefined
+
+        if (
+          this.device.LocalZones
+          && this.device.LocalZones[0]
+          && statusZoneHref === this.device.LocalZones[0].href
+        ) {
+          this.updateStateFromBridge(status)
+        }
+      }
+    })
+    // Optionally, fetch initial state from bridge here
+    return {
+      kind: 0, // DeviceWireResultType.Success
+      name: this.accessory.context.device.FullyQualifiedName?.join(' ') || 'WallSwitch',
+    }
+  }
+
+  private async handleOnSet(value: CharacteristicValue, cb: CharacteristicSetCallback) {
+    try {
+      // Send command to bridge to turn on/off
+      // Set zone level using LEAP command to /commandprocessor
+      if (!this.device.LocalZones || !this.device.LocalZones[0]) {
+        throw new Error('No LocalZones found on device')
+      }
+      const zoneHref = this.device.LocalZones[0].href
+      await this.bridge.client.request('CreateRequest', `${zoneHref}/commandprocessor`, {
+        Command: {
+          CommandType: 'GoToLevel',
+          Parameter: [{ Type: 'Level', Value: value ? 100 : 0 }],
+        },
+      })
+      cb(null)
+    } catch (e) {
+      this.platform.log.error('Failed to set WallSwitch state:', e)
+      cb(e as Error)
+    }
+  }
+
+  private async handleOnGet(cb: CharacteristicGetCallback) {
+    try {
+      // Query bridge for current state (optional: cache or optimize)
+      if (!this.device.LocalZones || !this.device.LocalZones[0]) {
+        throw new Error('No LocalZones found on device')
+      }
+      const zoneHref = this.device.LocalZones[0].href
+      const resp = await this.bridge.client.request('ReadRequest', `${zoneHref}/status`)
+      if (resp.Body && 'ZoneStatus' in resp.Body && resp.Body.ZoneStatus) {
+        const status = resp.Body.ZoneStatus
+        cb(null, status.Level > 0)
+      } else {
+        throw new Error('ZoneStatus not found in response')
+      }
+    } catch (e) {
+      this.platform.log.error('Failed to get WallSwitch state:', e)
+      cb(e as Error)
+    }
+  }
+
+  private updateStateFromBridge(status: any) {
+    // Update HomeKit/Matter state from bridge event
+    this.service.updateCharacteristic(this.platform.api.hap.Characteristic.On, status.Level > 0)
+
+    const matterApi = (this.platform.api as any).matter
+    if (matterApi && this.accessory?.UUID) {
+      const isOn = Number(status?.Level ?? 0) > 0
+      void matterApi.updateAccessoryState(this.accessory.UUID, 'onOff', { onOff: isOn })
+    }
+  }
+
+  static getMatterClusters(): Record<string, any> {
+    return {
+      onOff: { onOff: false },
+    }
+  }
+}

@@ -2,7 +2,70 @@
 
 Always reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.
 
-This is a Homebridge plugin that provides HomeKit integration for Lutron Caseta Smart Bridge devices including Pico remotes, occupancy sensors, and Serena wood blinds. The plugin is written in TypeScript and uses the lutron-leap-js library to communicate with Lutron bridges via the LEAP protocol.
+This is a Homebridge plugin that provides HomeKit and Matter integration for Lutron Caseta Smart Bridge 2 devices. The plugin is written in TypeScript and uses the lutron-leap-js library to communicate with Lutron bridges via the LEAP protocol.
+
+**Current Focus:** Full Matter support alongside HAP (HomeKit Accessory Protocol). All new devices support both HAP and Matter simultaneously.
+
+## Device Support
+
+### Currently Supported Devices
+- **WallDimmer** — Lutron dimmers (Matter: DimmableLight)
+- **WallSwitch** — Lutron switches (Matter: OnOffLight)
+- **SerenaTiltOnlyWoodBlind** — Serena wood blinds, tilt-only (Matter: WindowCovering)
+- **RPSOccupancySensor** — Lutron occupancy sensors (Matter: OccupancySensor)
+- **Pico Remotes** — All Pico remote models:
+  - Pico2Button, Pico2ButtonRaiseLower
+  - Pico3Button, Pico3ButtonRaiseLower
+  - Pico4Button, Pico4Button2Group, Pico4ButtonScene, Pico4ButtonZone
+  - PaddleSwitchPico
+  - (Matter: GenericSwitch)
+
+### Devices Not Yet Supported (Contributions Welcome)
+- Color temperature lighting
+- Additional blind types (vertical rails, honeycomb, etc.)
+- Motorized shades with position feedback
+
+## Matter and HomeKit Integration
+
+### Matter Implementation
+The plugin implements dual-mode device registration:
+- **HAP mode** (HomeKit Accessory Protocol): Base implementation via `LutronCasetaLeap` class
+- **Matter mode**: Extended via `LutronCasetaLeapMatterPlatform` class that overrides `processDevice()`
+
+When Homebridge's Matter API is available, `LutronCasetaLeapMatterPlatform.processDevice()` registers accessories with both HAP and Matter simultaneously. If Matter API is not available, the plugin transparently falls back to HAP-only mode.
+
+### Matter Device Type Mapping
+All Matter device types use `api.matter.deviceTypes.*` objects from the homebridge-matter API:
+
+| Device Type | HAP Service | Matter DeviceType | Matter Clusters |
+|---|---|---|---|
+| WallDimmer | Lightbulb | `DimmableLight` | onOff, levelControl |
+| WallSwitch | Switch | `OnOffLight` | onOff |
+| SerenaTiltOnlyWoodBlind | WindowCovering | `WindowCovering` | windowCovering |
+| RPSOccupancySensor | OccupancySensor | `OccupancySensor` | occupancySensing |
+| Pico Remotes | StatelessProgrammableSwitch | `GenericSwitch` | switch |
+
+### Authoritative Matter References
+
+1. https://matter-js.github.io/docs/index.html
+2. https://github.com/homebridge-plugins/homebridge-matter: Official Homebridge Matter plugin repository with extensive documentation and examples
+  - For all Matter cluster, attribute, and device type specifications, use the official homebridge-matter wiki:
+    - [Introduction](https://github.com/homebridge-plugins/homebridge-matter/wiki/Introduction)
+    - [Core Concepts](https://github.com/homebridge-plugins/homebridge-matter/wiki/Core-Concepts)
+    - [Getting Started](https://github.com/homebridge-plugins/homebridge-matter/wiki/Getting-Started)
+    - [State Management](https://github.com/homebridge-plugins/homebridge-matter/wiki/State-Management)
+    - [Monitoring External Changes](https://github.com/homebridge-plugins/homebridge-matter/wiki/Monitoring-External-Changes)
+    - [Best Practices](https://github.com/homebridge-plugins/homebridge-matter/wiki/Best-Practices)
+    - [Advanced Patterns](https://github.com/homebridge-plugins/homebridge-matter/wiki/Advanced-Patterns)
+    - [API Reference](https://github.com/homebridge-plugins/homebridge-matter/wiki/API-Reference)
+    - [Matter Types](https://github.com/homebridge-plugins/homebridge-matter/wiki/Matter-Types)
+    - [Value Conversions](https://github.com/homebridge-plugins/homebridge-matter/wiki/Value-Conversions)
+
+  - **Device References:**
+    - [Lighting Devices (§4)](https://github.com/homebridge-plugins/homebridge-matter/wiki/Section-4-Lighting) — DimmableLight, OnOffLight
+    - [Switches (§6)](https://github.com/homebridge-plugins/homebridge-matter/wiki/Section-6-Switches) — OnOffSwitch
+    - [Sensors (§7)](https://github.com/homebridge-plugins/homebridge-matter/wiki/Section-7-Sensors) — OccupancySensor
+    - [Closure Devices (§8)](https://github.com/homebridge-plugins/homebridge-matter/wiki/Section-8-Closure) — WindowCovering
 
 ## Working Effectively
 
@@ -14,7 +77,7 @@ This is a Homebridge plugin that provides HomeKit integration for Lutron Caseta 
 - Check for outdated packages: `npm run check` -- runs npm install && npm outdated (may exit with code 1 if packages are outdated, this is normal)
 
 ### Testing and Quality Assurance
-- Run tests: `npm run test` -- takes ~1 second. Minimal test suite (only 2 tests in 1 file).
+- Run tests: `npm run test` -- takes ~1 second. Validates utility functions and OccupancySensorRouter singleton pattern.
 - Run tests with coverage: `npm run test-coverage` -- takes ~2 seconds. Shows coverage report.
 - Watch tests: `npm run test:watch` -- for continuous testing during development.
 - Lint code: `npm run lint` -- takes ~1 second. Uses ESLint with @antfu/eslint-config.
@@ -42,6 +105,7 @@ After making code changes, ALWAYS validate by:
 3. Running `npm run test` to verify existing functionality
 4. If changing UI components, validate the configuration UI works properly
 5. For bridge communication changes, test with actual Lutron hardware if possible
+6. For Matter changes, verify Matter registration succeeds in Homebridge logs
 
 ### End-to-End Validation Workflow
 To verify the complete development workflow works:
@@ -59,14 +123,19 @@ Both must pass for PRs to be merged. The workflow runs on pushes to 'latest' bra
 ## Important Directories and Files
 
 ### Source Code Structure
-- `src/index.ts` -- Main plugin entry point, registers platform
-- `src/platform.ts` -- Core platform implementation, device discovery and management
+- `src/index.ts` -- Main plugin entry point, registers platform (choose HAP or Matter mode)
+- `src/Platform.HAP.ts` -- Core HAP-only platform implementation, device discovery and management
+- `src/Platform.Matter.ts` -- Matter platform that extends HAP, adds Matter registration for all supported device types
 - `src/settings.ts` -- Plugin configuration constants
-- `src/PicoRemote.ts` -- Pico remote button handling
-- `src/OccupancySensor.ts` -- Occupancy sensor implementation  
-- `src/SerenaTiltOnlyWoodBlinds.ts` -- Serena blinds support
-- `src/ButtonState.ts` -- Button press state management
-- `src/OccupancySensorRouter.ts` -- Routing logic for occupancy sensors
+- `src/WallDimmer.ts` -- Dimmable light device (Matter: DimmableLight)
+- `src/WallSwitch.ts` -- On/off switch device (Matter: OnOffLight)
+- `src/SerenaTiltOnlyWoodBlinds.ts` -- Serena wood blinds with tilt control (Matter: WindowCovering)
+- `src/OccupancySensor.ts` -- Occupancy/motion sensor (Matter: OccupancySensor)
+- `src/PicoRemote.ts` -- Pico remote button handling for all remote types (Matter: OnOffSwitch)
+- `src/ButtonState.ts` -- Button press state machine and click detection
+- `src/OccupancySensorRouter.ts` -- Singleton routing logic for occupancy sensor events
+- `src/Logger.ts` -- Logging utilities respecting user verbosity settings
+- `src/utils.ts` -- Utility functions for UUID generation and device lookup
 - `src/homebridge-ui/` -- Custom Homebridge configuration UI
 - `src/homebridge-ui/server.ts` -- UI backend server for bridge discovery/pairing
 - `src/homebridge-ui/public/index.html` -- Frontend configuration interface
@@ -78,6 +147,7 @@ Both must pass for PRs to be merged. The workflow runs on pushes to 'latest' bra
 - `config.schema.json` -- Homebridge configuration schema
 - `nodemon.json` -- Development watch configuration
 - `typedoc.json` -- Documentation generation settings
+- `.github/copilot-instructions.md` -- This file
 
 ### Generated/Output
 - `dist/` -- Compiled JavaScript output (generated by `npm run build`)
@@ -87,8 +157,8 @@ Both must pass for PRs to be merged. The workflow runs on pushes to 'latest' bra
 ## Dependencies and Requirements
 
 ### Runtime Requirements
-- Node.js 20 or 22 (specified in package.json engines)
-- Homebridge ^1.9.0 || ^2.0.0 || ^2.0.0-beta.26 || ^2.0.0-alpha.37
+- Node.js 22 or 24 (specified in package.json engines)
+- Homebridge ^1.11.4 || ^2.0.0-beta.106
 
 ### Key Dependencies
 - `lutron-leap` ^3.4.2 -- Core LEAP protocol library for bridge communication
@@ -98,20 +168,29 @@ Both must pass for PRs to be merged. The workflow runs on pushes to 'latest' bra
 
 ### Development Dependencies
 - `typescript` ^5.8.2 -- TypeScript compiler
-- `eslint` ^9.21.0 -- Code linting
-- `vitest` ^3.0.7 -- Testing framework
-- `typedoc` ^0.27.9 -- Documentation generation
+- `eslint` ^10.3.0 -- Code linting
+- `vitest` ^4.0.0+ -- Testing framework
+- `typedoc` ^0.27.9+ -- Documentation generation
 - `nodemon` ^3.1.9 -- Development file watching
 
 ## Common Development Tasks
 
 ### Adding New Device Support
-1. Add device type case to `platform.ts` in `configureAccessory` and `handleBridgeDiscovery`
+1. Add device type case to `Platform.HAP.ts` in `configureAccessory` and `handleBridgeDiscovery`
 2. Create new device class file in `src/` following pattern of existing devices
 3. Implement HomeKit services and characteristics in the new class
-4. Add LEAP protocol commands to lutron-leap-js library if needed
-5. Wire up event handlers for unsolicited bridge updates
-6. Test with actual hardware
+4. Add Matter device type and clusters via `Platform.Matter.ts` override
+5. Add LEAP protocol commands to lutron-leap-js library if needed
+6. Wire up event handlers for unsolicited bridge updates
+7. Test with actual hardware
+
+### Adding Matter Support to Existing Device
+1. Create or update device's `getMatterClusters()` method to return Matter clusters object
+2. Add case statement to `Platform.Matter.ts` processDevice switch with `mApi.deviceTypes.*` assignment
+3. Set `(accessory as any).clusters` directly on the accessory (for single-endpoint) or `(accessory as any).parts` (for composed)
+4. Validate deviceType uses `api.matter.deviceTypes.*` object, not number array
+5. For composed devices, ensure each part has an `id: string` field
+6. Test both HAP and Matter registration via Homebridge logs
 
 ### UI Configuration Changes
 1. Modify `src/homebridge-ui/public/index.html` for frontend changes (bridge discovery/pairing UI)
@@ -141,7 +220,7 @@ The rough development workflow according to the maintainer:
 ## Common Issues and Solutions
 
 ### Build or Link Failures
-- Ensure Node.js version 20 or 22 is installed
+- Ensure Node.js version 22 or 24 is installed
 - Run `npm install` to ensure all dependencies are current
 - Clear and rebuild: `npm run clean && npm run build`
 
@@ -151,10 +230,9 @@ The rough development workflow according to the maintainer:
 - Import statements must use .js extensions (ESM requirement)
 
 ### Test Failures
-- Current test suite is minimal (only OccupancySensorRouter tests in 1 file)
+- Current test suite validates utility functions and OccupancySensorRouter singleton pattern
 - Tests use Vitest framework with TypeScript
 - Test files follow pattern: `*.test.ts` in src/ directory
-- Tests validate singleton pattern and state management for occupancy sensors
 - Failures likely indicate breaking changes to core functionality
 - Add tests for new features following existing vitest patterns
 
@@ -162,6 +240,12 @@ The rough development workflow according to the maintainer:
 - Bridge discovery uses mDNS/Bonjour/zeroconf
 - Network configuration can prevent discovery (broadcast relay, VLANs, etc.)
 - Bridge must be on same network segment as Homebridge server
+
+### Matter Registration Failures
+- Ensure `deviceType` is set via `mApi.deviceTypes.*` object, not a number array (causes "behaviors" must be array error)
+- For composed devices (parts array), each part must have an `id: string` field (causes "missing required field 'id'" error)
+- Verify all returned clusters match Matter spec — use homebridge-matter wiki to validate cluster attributes
+- Check Homebridge logs for Matter registration errors during startup
 
 NEVER CANCEL long-running commands. Measured timings on standard development machine:
 - `npm install`: ~40 seconds 

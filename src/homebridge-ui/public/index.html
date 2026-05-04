@@ -1,5 +1,9 @@
 <div class="card card-body text-center">
     <p class="h2 card-title">Lutron Device Configuration</p>
+    <h4 class="card-title mt-2">Discovered Bridges</h4>
+    <div id="bridges">
+        <div class="card my-2" id="searching">Searching for bridges...</div>
+    </div>
     <div id="options" class="card-body my-3 w-75 mx-auto">
 
         <h4 class="card-title">Global Options</h4>
@@ -9,14 +13,6 @@
                     <input class="form-check-input col-sm-1" type="checkbox" value="" id="filterPicoChk"/>
                     <label class="form-check-label col-sm-11 text-left" for="filterPicoChk">
                         Exclude Pico remotes that are associated in the Lutron app
-                    </label>
-                    <br/>
-                </div>
-
-                <div class="form-check row py-sm-3 mb-0">
-                    <input class="form-check-input col-sm-1" type="checkbox" value="" id="filterBlindsChk"/>
-                    <label class="form-check-label col-sm-11 text-left" for="filterBlindsChk">
-                        Disable support for Serena wood blinds in this plugin
                     </label>
                     <br/>
                 </div>
@@ -41,11 +37,13 @@
                     </select>
                 </div>
 
+                <div class="form-group row py-sm-3 mb-0">
+                    <label for='excludedDeviceTypesSelect' class='col-sm-5 col-form-label'>Exclude device types (HAP + Matter)</label>
+                    <select class="form-control-sm custom-select col-sm-7" id="excludedDeviceTypesSelect" multiple size="14"></select>
+                </div>
+
         </form>
 
-    </div>
-    <div id="bridges">
-        <div class="card my-2" id="searching">Searching for bridges...</div>
     </div>
     <div id="schemapop">
         <button type="button" class="btn btn-secondary" id="schemapopbtn">Use legacy view</button>
@@ -53,10 +51,51 @@
 </div>
 
 <script>
+    const DEVICE_TYPE_OPTIONS = [
+        'WallDimmer',
+        'WallSwitch',
+        'SerenaTiltOnlyWoodBlind',
+        'RPSOccupancySensor',
+        'Pico2Button',
+        'Pico2ButtonRaiseLower',
+        'Pico3Button',
+        'Pico3ButtonRaiseLower',
+        'Pico4Button',
+        'Pico4Button2Group',
+        'Pico4ButtonScene',
+        'Pico4ButtonZone',
+        'PaddleSwitchPico',
+        'FourGroupRemote',
+    ];
+
+    function populateExcludedDeviceTypeSelect() {
+        const select = document.querySelector('#excludedDeviceTypesSelect');
+        select.innerHTML = '';
+        select.size = DEVICE_TYPE_OPTIONS.length;
+        for (const deviceType of DEVICE_TYPE_OPTIONS) {
+            const option = document.createElement('option');
+            option.value = deviceType;
+            option.text = deviceType;
+            select.appendChild(option);
+        }
+    }
+
+    function getSelectedDeviceTypes() {
+        return Array.from(document.querySelector('#excludedDeviceTypesSelect').selectedOptions)
+            .map(option => option.value);
+    }
+
+    function setSelectedDeviceTypes(selectedDeviceTypes) {
+        const selected = new Set(Array.isArray(selectedDeviceTypes) ? selectedDeviceTypes : []);
+        for (const option of document.querySelector('#excludedDeviceTypesSelect').options) {
+            option.selected = selected.has(option.value);
+        }
+    }
+
     function bootstrapConfig(pluginConfig) {
         if (pluginConfig.length === 0) {
             console.log("no configuration detected. bootstrapping.");
-            pluginConfig = [{name: "Lutron", platform: "LutronCasetaLeap", options: { filterPico: false, filterBlinds: false, clickSpeedDouble: "default", clickSpeedLong: "default"}, secrets: []}];
+            pluginConfig = [{name: "Lutron", platform: "LutronCasetaLeap", options: { filterPico: false, clickSpeedDouble: "default", clickSpeedLong: "default", excludedDeviceTypes: []}, secrets: []}];
         }
         if (pluginConfig[0].secrets === undefined) {
             console.log("configuration with no secrets. bootstrapping.");
@@ -66,10 +105,13 @@
             console.log("configuration with no options. bootstrapping.");
             pluginConfig[0].options = {
                 filterPico: false,
-                filterBlinds: false,
                 clickSpeedDouble: "default",
                 clickSpeedLong: "default",
+                excludedDeviceTypes: [],
             };
+        }
+        if (!Array.isArray(pluginConfig[0].options.excludedDeviceTypes)) {
+            pluginConfig[0].options.excludedDeviceTypes = [];
         }
         return pluginConfig;
     }
@@ -99,19 +141,26 @@
 
         console.log(pluginConfig[0]);
         console.log(document.querySelector('#filterPicoChk'));
+        populateExcludedDeviceTypeSelect();
         document.querySelector('#filterPicoChk').checked = pluginConfig[0].options.filterPico;
-        document.querySelector('#filterBlindsChk').checked = pluginConfig[0].options.filterBlinds;
         document.querySelector('#clickSpeedLongSelect').value = pluginConfig[0].options.clickSpeedLong;
         document.querySelector('#clickSpeedDoubleSelect').value = pluginConfig[0].options.clickSpeedDouble;
+        setSelectedDeviceTypes(pluginConfig[0].options.excludedDeviceTypes);
 
         document.getElementById('optionsForm').addEventListener('input', () => {
             console.log("options clicked");
             pluginConfig = bootstrapConfig(pluginConfig);
             pluginConfig[0].options.filterPico = document.querySelector('#filterPicoChk').checked;
-            pluginConfig[0].options.filterBlinds = document.querySelector('#filterBlindsChk').checked;
             pluginConfig[0].options.clickSpeedLong = document.querySelector('#clickSpeedLongSelect').value;
             pluginConfig[0].options.clickSpeedDouble = document.querySelector('#clickSpeedDoubleSelect').value;
+            pluginConfig[0].options.excludedDeviceTypes = getSelectedDeviceTypes();
             console.log(pluginConfig[0].options);
+            homebridge.updatePluginConfig(pluginConfig);
+        });
+
+        document.getElementById('excludedDeviceTypesSelect').addEventListener('change', () => {
+            pluginConfig = bootstrapConfig(pluginConfig);
+            pluginConfig[0].options.excludedDeviceTypes = getSelectedDeviceTypes();
             homebridge.updatePluginConfig(pluginConfig);
         });
 

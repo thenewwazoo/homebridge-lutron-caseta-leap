@@ -238,7 +238,7 @@ The shape of the configuration is:
   "platform": "LutronCasetaLeap",
   "options": {
     "filterPico": false,
-    "filterBlinds": false,
+    "excludedDeviceTypes": [],
     "clickSpeedLong": "default",
     "clickSpeedDouble": "default",
     "logLevel": "normal",

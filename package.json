@@ -22,7 +22,7 @@
   ],
   "main": "dist/index.js",
   "engines": {
-    "homebridge": "^1.11.4 || ^2.0.0-beta.101",
+    "homebridge": "^1.11.4 || ^2.0.0-beta.110",
     "node": "^22 || ^24"
   },
   "scripts": {
@@ -52,11 +52,11 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^8.2.0",
-    "eslint": "^10.2.0",
+    "eslint": "^10.3.0",
     "eslint-plugin-format": "^2.0.1",
     "eslint-plugin-html": "^8.1.4",
     "eslint-plugin-perfectionist": "^5.8.0",
-    "homebridge": "^2.0.0-beta.101",
+    "homebridge": "^2.0.0-beta.110",
     "homebridge-config-ui-x": "^5.21.0",
     "nodemon": "^3.1.14",
     "shx": "^0.4.0",

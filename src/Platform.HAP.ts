@@ -36,7 +36,7 @@ interface PlatformEvents {
 // see config.schema.json
 export interface GlobalOptions {
   filterPico: boolean
-  filterBlinds: boolean
+  excludedDeviceTypes: string[]
   clickSpeedLong: 'quick' | 'default' | 'relaxed' | 'disabled'
   clickSpeedDouble: 'quick' | 'default' | 'relaxed' | 'disabled'
   logSSLKeyDangerous: boolean
@@ -161,10 +161,18 @@ export class LutronCasetaLeap
   }
 
   optionsFromConfig(config: PlatformConfig): GlobalOptions {
+    const rawExcludedDeviceTypes = config.options?.excludedDeviceTypes
+    const excludedDeviceTypes = Array.isArray(rawExcludedDeviceTypes)
+      ? rawExcludedDeviceTypes
+          .filter((value): value is string => typeof value === 'string')
+          .map(value => value.trim())
+          .filter(value => value.length > 0)
+      : []
+
     return Object.assign(
       {
         filterPico: false,
-        filterBlinds: false,
+        excludedDeviceTypes: [],
         clickSpeedDouble: 'default',
         clickSpeedLong: 'default',
         logSSLKeyDangerous: false,
@@ -178,7 +186,12 @@ export class LutronCasetaLeap
         buttonPressLogging: 'debug',
       },
       config.options,
+      { excludedDeviceTypes },
     )
+  }
+
+  private isDeviceTypeExcluded(deviceType: string): boolean {
+    return this.options.excludedDeviceTypes.includes(deviceType)
   }
 
   secretsFromConfig(config: PlatformConfig): Map<string, BridgeAuthEntry> {
@@ -361,6 +374,7 @@ export class LutronCasetaLeap
         return Promise.reject(new Error(`Failed to wire device ${fullName}: ${result.reason}`))
       }
       case DeviceWireResultType.Skipped: {
+        const isExplicitlyExcluded = result.reason.startsWith('Device type excluded by config: ')
         // Mirror the Error-path fix from #207 (v3.0.4): never unregister a cached
         // accessory on a refresh-time classification miss. Skipped fires for transient
         // bridge responses missing AffectedZones (filterPico path) and for filter
@@ -370,6 +384,12 @@ export class LutronCasetaLeap
         // intentionally-filtered devices via the cached-accessory cleanup documented
         // in the README.
         if (is_from_cache) {
+          if (isExplicitlyExcluded) {
+            this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
+            this.accessories.delete(accessory.UUID)
+            this.log.info(`Unregistered cached accessory for excluded device type ${d.DeviceType}: ${fullName}`)
+            return Promise.resolve(`Removed cached accessory for excluded device type: ${fullName}`)
+          }
           this.log.warn(`Skipping cached device ${fullName}; leaving accessory registered: ${result.reason}`)
           return Promise.resolve(`Leaving cached accessory registered (skipped): ${fullName}`)
         }
@@ -397,17 +417,39 @@ export class LutronCasetaLeap
     accessory.context.device = device
     accessory.context.bridgeID = bridge.bridgeID
 
+    if (this.isDeviceTypeExcluded(device.DeviceType)) {
+      return Promise.resolve({
+        kind: DeviceWireResultType.Skipped,
+        reason: `Device type excluded by config: ${device.DeviceType}`,
+      })
+    }
+
     switch (device.DeviceType) {
+            case 'WallDimmer': {
+              this.log.info(`Found a WallDimmer ${fullName}`)
+              const dimmer = new (await import('./WallDimmer.js')).WallDimmer(this, accessory, bridge, device)
+              if (typeof dimmer.initialize === 'function') {
+                return dimmer.initialize()
+              }
+              return {
+                kind: DeviceWireResultType.Success,
+                name: fullName,
+              }
+            }
+            case 'WallSwitch': {
+              this.log.info(`Found a WallSwitch ${fullName}`)
+              const wallSwitch = new (await import('./WallSwitch.js')).WallSwitch(this, accessory, bridge, device)
+              if (typeof wallSwitch.initialize === 'function') {
+                return wallSwitch.initialize()
+              }
+              return {
+                kind: DeviceWireResultType.Success,
+                name: fullName,
+              }
+            }
       // serena blinds
       case 'SerenaTiltOnlyWoodBlind': {
         this.log.info('Found a Serena blind:', fullName)
-
-        if (this.options.filterBlinds) {
-          return {
-            kind: DeviceWireResultType.Skipped,
-            reason: 'Serena wood blinds support disabled.',
-          }
-        }
 
         // SIDE EFFECT: this constructor mutates the accessory object
         new SerenaTiltOnlyWoodBlinds(this, accessory, bridge)
@@ -423,6 +465,7 @@ export class LutronCasetaLeap
       case 'Pico2ButtonRaiseLower':
       case 'Pico3Button':
       case 'Pico3ButtonRaiseLower':
+      case 'Pico4Button':
       case 'Pico4Button2Group':
       case 'Pico4ButtonScene':
       case 'Pico4ButtonZone':
@@ -443,7 +486,6 @@ export class LutronCasetaLeap
       }
 
       // known devices that are not exposed to homekit, pending support
-      case 'Pico4Button':
       case 'FourGroupRemote': {
         return Promise.resolve({
           kind: DeviceWireResultType.Skipped,

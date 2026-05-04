@@ -1,7 +1,7 @@
 import type { API } from 'homebridge'
 
-import { LutronCasetaLeapMatterPlatform } from './LutronCasetaLeapMatterPlatform.js'
-import { LutronCasetaLeap } from './platform.js'
+import { LutronCasetaLeap } from './Platform.HAP.js'
+import { LutronCasetaLeapMatterPlatform } from './Platform.Matter.js'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js'
 import { createPlatformProxy } from './utils.js'
 
