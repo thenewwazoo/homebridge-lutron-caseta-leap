@@ -137,8 +137,16 @@ export class LutronCasetaLeap
     // treats unhandled rejections as fatal (exit code 1), which restarts
     // the child bridge and corrupts the cached-accessories file, causing
     // Picos to lose their HomeKit room assignments and automation links.
-    // Installing this handler prevents the crash; we log at warn level so
-    // the event is still visible without being fatal.
+    //
+    // This plugin runs in a dedicated Homebridge *child bridge* process
+    // (separate from the Homebridge main process and from all other
+    // plugins), so installing a handler here only suppresses unhandled
+    // rejections originating in this process. The fix cannot be applied
+    // inside lutron-leap itself without upstream changes, and wrapping
+    // each LEAP call in a try-catch would not intercept the rejection
+    // because it originates inside a setTimeout callback that fires after
+    // the awaiting promise chain has already been settled. Logging at warn
+    // level keeps the event visible without it being fatal.
     if (process.listenerCount('unhandledRejection') === 0) {
       process.on('unhandledRejection', (reason: unknown) => {
         this.log.warn('Unhandled promise rejection (preventing crash):', reason)
