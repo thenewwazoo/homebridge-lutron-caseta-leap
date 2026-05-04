@@ -366,6 +366,10 @@ export class LutronCasetaLeapMatterPlatform extends LutronCasetaLeap {
         return Promise.resolve(`Skipped setting up device: ${result.reason}`)
       }
       case DeviceWireResultType.Success: {
+        // Mirror the base-class wiredDevices tracking so that subsequent
+        // processAllDevices() passes (after reconfiguration or deviceheard
+        // events) skip this device and avoid accumulating duplicate listeners.
+        this.wiredDevices.add(uuid)
         if (!isFromCache) {
           this.accessories.set(accessory.UUID, accessory)
           mApi.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])

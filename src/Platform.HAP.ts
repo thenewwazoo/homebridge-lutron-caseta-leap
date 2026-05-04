@@ -95,6 +95,24 @@ export class LutronCasetaLeap
   // that reads `this.platform.log`.
   public readonly log: Logging
 
+  // UUIDs of devices whose initialize() succeeded. Used by processAllDevices()
+  // to skip already-wired devices on re-scans (bridge re-announcements or
+  // deviceheard events) so that PicoRemote/OccupancySensor 'disconnected' and
+  // 'unsolicited' listeners do not accumulate.
+  protected wiredDevices: Set<string> = new Set()
+  // Bridges currently being scanned. Prevents concurrent processAllDevices()
+  // calls for the same bridge from overlapping.
+  private activeScanBridges: Set<string> = new Set()
+  // Bridges that requested a re-scan while one was already in progress.
+  // processAllDevices() checks this after each scan and runs a follow-up pass
+  // so that devices that failed during an interrupted scan are retried.
+  private pendingScanBridges: Set<string> = new Set()
+  // Pre-bound reference to handleUnsolicitedMessage so we can pass the same
+  // function instance to both bridge.on() and bridge.removeListener(), which
+  // prevents duplicate 'unsolicited' listeners from accumulating when
+  // processAllDevices() is called multiple times for the same bridge.
+  private boundHandleUnsolicited!: (bridgeID: string, response: Response) => void
+
   constructor(log: Logging, public readonly config: PlatformConfig, public readonly api: API) {
     super()
 
@@ -106,6 +124,26 @@ export class LutronCasetaLeap
     this.log = createFilteredLogger(log, this.options.logLevel)
 
     this.log.info('Homebridge Lutron starting up...')
+
+    // Pre-bind once so the same function reference is used in both
+    // bridge.on() and bridge.removeListener() — required for dedup.
+    this.boundHandleUnsolicited = this.handleUnsolicitedMessage.bind(this)
+
+    // The lutron-leap ping loop creates a `timeoutPromise` inside
+    // Promise.race(). When the LEAP request rejects first (e.g. because
+    // drain() was called during bridge reconfiguration), Promise.race
+    // settles and its .catch() handler runs — but `timeoutPromise` itself
+    // still rejects ~10 s later with no handler attached. Node.js v15+
+    // treats unhandled rejections as fatal (exit code 1), which restarts
+    // the child bridge and corrupts the cached-accessories file, causing
+    // Picos to lose their HomeKit room assignments and automation links.
+    // Installing this handler prevents the crash; we log at warn level so
+    // the event is still visible without being fatal.
+    if (process.listenerCount('unhandledRejection') === 0) {
+      process.on('unhandledRejection', (reason: unknown) => {
+        this.log.warn('Unhandled promise rejection (preventing crash):', reason)
+      })
+    }
 
     process.on('warning', e => this.log.warn(`Got ${e.name} process warning: ${e.message}:\n${e.stack}`))
 
@@ -274,6 +312,11 @@ export class LutronCasetaLeap
         this.log.debug('Bridge', bridgeInfo.bridgeid, 'entering reconfiguration')
         await this.bridgeMgr.get(bridgeID)!.reconfigureBridge(client)
         this.log.debug('Bridge', bridgeInfo.bridgeid, 'exit reconfiguration')
+        // reconfigureBridge() emits 'disconnected' so already-wired devices
+        // re-subscribe via their own handlers. Call processAllDevices() to
+        // also retry any devices whose initialize() was interrupted by the
+        // previous reconfiguration (they won't be in wiredDevices yet).
+        this.processAllDevices(this.bridgeMgr.get(bridgeID)!)
       } else {
         const bridge = new SmartBridge(bridgeID, client)
 
@@ -320,9 +363,39 @@ export class LutronCasetaLeap
   }
 
   private processAllDevices(bridge: SmartBridge) {
+    // Prevent overlapping scans for the same bridge. If a scan is already
+    // running when this is called (e.g. a second mDNS re-announce fires
+    // while the first processAllDevices() pass is still in flight), record a
+    // pending request so the running scan queues a follow-up pass when it
+    // finishes — ensuring any devices that failed during the interrupted scan
+    // are eventually retried.
+    if (this.activeScanBridges.has(bridge.bridgeID)) {
+      this.pendingScanBridges.add(bridge.bridgeID)
+      this.log.debug('Bridge', bridge.bridgeID, 'scan already in progress; queuing a follow-up refresh')
+      return
+    }
+    this.activeScanBridges.add(bridge.bridgeID)
+    this.pendingScanBridges.delete(bridge.bridgeID)
+
+    // Use remove+add so that repeated calls always result in exactly one
+    // 'unsolicited' listener on the bridge, even after reconfiguration or
+    // deviceheard-triggered rescans.
+    bridge.removeListener('unsolicited', this.boundHandleUnsolicited)
+    bridge.on('unsolicited', this.boundHandleUnsolicited)
+
     this.getDeviceInfoWithRetry(bridge).then(async (devices: DeviceDefinition[]) => {
+      // Filter out devices that already completed initialize() successfully.
+      // Wired devices have their own 'disconnected' handler that calls
+      // bridge.subscribeToButton() / sensor.subscribe() after reconnect, so
+      // they don't need to go through processDevice() again. Skipping them
+      // prevents duplicate 'disconnected' and 'unsolicited' listeners from
+      // accumulating on PicoRemote and OccupancySensor instances each time
+      // the bridge re-announces or a deviceheard event fires.
+      const unwiredDevices = devices.filter(
+        d => !this.wiredDevices.has(this.api.hap.uuid.generate(d.SerialNumber.toString())),
+      )
       const results: PromiseSettledResult<string>[] = await Promise.allSettled(
-        devices.map((device: DeviceDefinition) => this.processDevice(bridge, device)),
+        unwiredDevices.map((device: DeviceDefinition) => this.processDevice(bridge, device)),
       )
       for (const result of results) {
         switch (result.status) {
@@ -345,9 +418,16 @@ export class LutronCasetaLeap
       // Log at error (not warn) so users see when the plugin has given up — they
       // may need to restart Homebridge if the bridge does not recover on its own.
       this.log.error('Failed to fetch device inventory after retries; skipping this scan. Restart Homebridge if the bridge does not recover on its own:', error)
+    }).finally(() => {
+      this.activeScanBridges.delete(bridge.bridgeID)
+      // If a re-scan was requested while this one was running, start it now
+      // so any devices that failed during an interrupted scan are retried.
+      if (this.pendingScanBridges.has(bridge.bridgeID)) {
+        this.pendingScanBridges.delete(bridge.bridgeID)
+        this.log.debug('Bridge', bridge.bridgeID, 'running queued follow-up device scan')
+        this.processAllDevices(bridge)
+      }
     })
-
-    bridge.on('unsolicited', this.handleUnsolicitedMessage.bind(this))
   }
 
   async processDevice(bridge: SmartBridge, d: DeviceDefinition): Promise<string> {
@@ -397,6 +477,12 @@ export class LutronCasetaLeap
         return Promise.resolve(`Skipped setting up device: ${result.reason}`)
       }
       case DeviceWireResultType.Success: {
+        // Mark this device as successfully wired so subsequent processAllDevices()
+        // passes (from re-announcements or deviceheard events) can skip it.
+        // Already-wired devices re-subscribe via their own 'disconnected' handler
+        // after reconfigureBridge() emits 'disconnected', so they don't need
+        // initialize() to run again.
+        this.wiredDevices.add(uuid)
         if (!is_from_cache) {
           this.accessories.set(accessory.UUID, accessory)
           this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
