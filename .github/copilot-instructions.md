@@ -67,6 +67,26 @@ All Matter device types use `api.matter.deviceTypes.*` objects from the homebrid
     - [Sensors (§7)](https://github.com/homebridge-plugins/homebridge-matter/wiki/Section-7-Sensors) — OccupancySensor
     - [Closure Devices (§8)](https://github.com/homebridge-plugins/homebridge-matter/wiki/Section-8-Closure) — WindowCovering
 
+## Changelog Format Requirements
+
+When generating a changelog release entry, always use this exact structure:
+
+1. Release header with compare URL using `compare/tag/vX.Y.Z`:
+
+```md
+## [X.Y.Z](https://github.com/homebridge-plugins/homebridge-updater/compare/tag/vX.Y.Z) (YYYY-MM-DD)
+```
+
+2. Standard sections as needed (`### Bug Fixes`, `### Enhancements`, `### Documentation`, etc.).
+
+3. End each release entry with a full changelog comparison URL to the previous version:
+
+```md
+**Full Changelog**: https://github.com/homebridge-plugins/homebridge-updater/compare/vX.Y.(Z-1)...vX.Y.Z
+```
+
+Do not omit either URL line when creating a new release entry.
+
 ## Working Effectively
 
 ### Bootstrap and Build

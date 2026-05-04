@@ -7,6 +7,8 @@ import type {
 } from 'lutron-leap'
 import type TypedEmitter from 'typed-emitter'
 
+import type { ButtonPressLogLevel, LogLevelOption } from './Logger.js'
+
 import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
 import process from 'node:process'
@@ -19,8 +21,6 @@ import {
   LeapClient,
   SmartBridge,
 } from 'lutron-leap'
-
-import type { ButtonPressLogLevel, LogLevelOption } from './Logger.js'
 
 import { createFilteredLogger } from './Logger.js'
 import { OccupancySensor } from './OccupancySensor.js'
@@ -105,7 +105,7 @@ export class LutronCasetaLeap
     this.options = this.optionsFromConfig(config)
     this.log = createFilteredLogger(log, this.options.logLevel)
 
-    this.log.info('LutronCasetaLeap starting up...')
+    this.log.info('Homebridge Lutron starting up...')
 
     process.on('warning', e => this.log.warn(`Got ${e.name} process warning: ${e.message}:\n${e.stack}`))
 
@@ -121,7 +121,7 @@ export class LutronCasetaLeap
 
     // Each device will subscribe to 'unsolicited', which means we very
     // quickly hit the limit for EventEmitters. Set this limit to
-    // a very high number (see [#123](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/issues/123))
+    // a very high number (see [#123](https://github.com/homebridge-plugins/homebridge-lutron/issues/123))
     this.setMaxListeners(400 * this.secrets.size)
 
     /*
@@ -157,7 +157,7 @@ export class LutronCasetaLeap
       this.log.info(`Heap dump to ${fileName} finished.`)
     })
 
-    this.log.info('LutronCasetaLeap plugin finished early initialization')
+    this.log.info('Homebridge Lutron plugin finished early initialization')
   }
 
   optionsFromConfig(config: PlatformConfig): GlobalOptions {
@@ -179,11 +179,11 @@ export class LutronCasetaLeap
         // Defaults reflect the post-reclassification "sane quiet by default"
         // posture. logLevel 'normal' means the wrapper is a passthrough; the
         // quietness comes from the call sites being correctly classified.
-        // buttonPressLogging 'debug' means presses are not visible in normal
-        // logs (a behavior change from earlier versions); use 'info' to
-        // restore the old chatty behavior, or 'silent' to drop them entirely.
+        // buttonPressLogging 'info' keeps press events visible in normal logs.
+        // Users can set 'debug' to only show presses with global Homebridge
+        // debug enabled, or 'silent' to drop them entirely.
         logLevel: 'normal',
-        buttonPressLogging: 'debug',
+        buttonPressLogging: 'info',
       },
       config.options,
       { excludedDeviceTypes },
@@ -279,7 +279,7 @@ export class LutronCasetaLeap
 
         // every pico and occupancy sensor needs to subscribe to
         // 'disconnected', and that may be a lot of devices.
-        // see [#123](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/issues/123)
+        // see [#123](https://github.com/homebridge-plugins/homebridge-lutron/issues/123)
         bridge.setMaxListeners(400)
 
         this.bridgeMgr.set(bridge.bridgeID, bridge)
@@ -359,7 +359,8 @@ export class LutronCasetaLeap
     if (accessory === undefined) {
       is_from_cache = false
       // new device, create an accessory
-      accessory = new this.api.platformAccessory(fullName, uuid)
+      const PlatformAccessoryCtor = this.api.platformAccessory
+      accessory = new PlatformAccessoryCtor(fullName, uuid)
       this.log.debug(`Device ${fullName} not found in accessory cache`)
     }
 
@@ -425,28 +426,28 @@ export class LutronCasetaLeap
     }
 
     switch (device.DeviceType) {
-            case 'WallDimmer': {
-              this.log.info(`Found a WallDimmer ${fullName}`)
-              const dimmer = new (await import('./WallDimmer.js')).WallDimmer(this, accessory, bridge, device)
-              if (typeof dimmer.initialize === 'function') {
-                return dimmer.initialize()
-              }
-              return {
-                kind: DeviceWireResultType.Success,
-                name: fullName,
-              }
-            }
-            case 'WallSwitch': {
-              this.log.info(`Found a WallSwitch ${fullName}`)
-              const wallSwitch = new (await import('./WallSwitch.js')).WallSwitch(this, accessory, bridge, device)
-              if (typeof wallSwitch.initialize === 'function') {
-                return wallSwitch.initialize()
-              }
-              return {
-                kind: DeviceWireResultType.Success,
-                name: fullName,
-              }
-            }
+      case 'WallDimmer': {
+        this.log.info(`Found a WallDimmer ${fullName}`)
+        const dimmer = new (await import('./WallDimmer.js')).WallDimmer(this, accessory, bridge, device)
+        if (typeof dimmer.initialize === 'function') {
+          return dimmer.initialize()
+        }
+        return {
+          kind: DeviceWireResultType.Success,
+          name: fullName,
+        }
+      }
+      case 'WallSwitch': {
+        this.log.info(`Found a WallSwitch ${fullName}`)
+        const wallSwitch = new (await import('./WallSwitch.js')).WallSwitch(this, accessory, bridge, device)
+        if (typeof wallSwitch.initialize === 'function') {
+          return wallSwitch.initialize()
+        }
+        return {
+          kind: DeviceWireResultType.Success,
+          name: fullName,
+        }
+      }
       // serena blinds
       case 'SerenaTiltOnlyWoodBlind': {
         this.log.info('Found a Serena blind:', fullName)

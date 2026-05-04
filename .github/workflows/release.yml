@@ -92,7 +92,7 @@ jobs:
       body: |
         **Beta Release**
         **Version**: v${{ needs.beta-publish.outputs.NPM_VERSION }}
-        [How To Test Beta Releases](https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/wiki/Beta-Version)
+        [How To Test Beta Releases](https://github.com/homebridge-plugins/homebridge-lutron/wiki/Beta-Version)
 
 
   # ─── STABLE RELEASE (branch: "latest") ───────────────────────────────────────
@@ -164,6 +164,6 @@ jobs:
       title: ${{ startsWith(github.ref_name, 'beta') && 'Homebridge Lutron Beta Release' || 'Homebridge Lutron Release' }}
       description: |
         Version `v${{ startsWith(github.ref_name, 'beta') && needs.beta-publish.outputs.NPM_VERSION || needs.update-version.outputs.version }}`
-      url: "https://github.com/homebridge-plugins/homebridge-lutron-caseta-leap/releases/tag/v${{ startsWith(github.ref_name, 'beta') && needs.beta-publish.outputs.NPM_VERSION || needs.update-version.outputs.version }}"
+      url: "https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v${{ startsWith(github.ref_name, 'beta') && needs.beta-publish.outputs.NPM_VERSION || needs.update-version.outputs.version }}"
     secrets:
       DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL_LATEST }}
