@@ -138,18 +138,35 @@ export class LutronCasetaLeap
     // the child bridge and corrupts the cached-accessories file, causing
     // Picos to lose their HomeKit room assignments and automation links.
     //
-    // This plugin runs in a dedicated Homebridge *child bridge* process
-    // (separate from the Homebridge main process and from all other
-    // plugins), so installing a handler here only suppresses unhandled
-    // rejections originating in this process. The fix cannot be applied
-    // inside lutron-leap itself without upstream changes, and wrapping
-    // each LEAP call in a try-catch would not intercept the rejection
-    // because it originates inside a setTimeout callback that fires after
-    // the awaiting promise chain has already been settled. Logging at warn
-    // level keeps the event visible without it being fatal.
+    // The fix cannot be applied inside lutron-leap itself without upstream
+    // changes, and wrapping each LEAP call in a try-catch would not
+    // intercept the rejection because it originates inside a setTimeout
+    // callback that fires after the awaiting promise chain has already
+    // settled.
+    //
+    // The handler below matches only the two known lutron-leap rejection
+    // strings ('Ping timeout' from SmartBridge and 'request with tag…timed
+    // out' from LeapClient). All other unhandled rejections are re-thrown
+    // so that genuine process-fatal errors are not silently swallowed —
+    // this is important when the plugin runs in the Homebridge main process
+    // rather than a dedicated child bridge.
     if (process.listenerCount('unhandledRejection') === 0) {
       process.on('unhandledRejection', (reason: unknown) => {
-        this.log.warn('Unhandled promise rejection (preventing crash):', reason)
+        // lutron-leap SmartBridge ping timeout (a plain string, not an Error)
+        if (reason === 'Ping timeout') {
+          this.log.debug('Suppressed lutron-leap ping timeout (unhandled rejection):', reason)
+          return
+        }
+        // lutron-leap LeapClient request timeout (an Error with a known message pattern)
+        if (reason instanceof Error && reason.message.includes('timed out')) {
+          this.log.debug('Suppressed lutron-leap request timeout (unhandled rejection):', reason.message)
+          return
+        }
+        // Unknown unhandled rejection — re-throw so Node.js handles it as fatal.
+        // This preserves the default crash behaviour for any rejection that is not
+        // a known lutron-leap artefact, preventing silent data loss.
+        this.log.warn('Unhandled promise rejection (not a known lutron-leap timeout):', reason)
+        throw reason
       })
     }
 
