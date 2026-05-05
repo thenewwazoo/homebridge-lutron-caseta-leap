@@ -257,8 +257,9 @@ export class PicoRemote {
       }
       for (const button of buttons) {
         const pmHref = (button.ProgrammingModel as { href?: string } | undefined)?.href
-        if (!pmHref)
+        if (!pmHref) {
           continue
+        }
         let pm: { Preset?: { href?: string } } | undefined
         try {
           const resp = await this.bridge.getHref({ href: pmHref } as any) as any
@@ -268,8 +269,9 @@ export class PicoRemote {
           continue
         }
         const presetHref = pm?.Preset?.href
-        if (!presetHref)
+        if (!presetHref) {
           continue
+        }
         let preset: unknown
         try {
           const resp = await this.bridge.getHref({ href: presetHref } as any) as any
@@ -569,17 +571,18 @@ export class PicoRemote {
     const sortedAliases = Array.from(dentry.values()).sort((a, b) => a.index - b.index)
     this.platform.log.debug(`[Matter] Creating ${sortedAliases.length} button parts for '${type}'`)
     const isLongPressEnabled = this.options.clickSpeedLong !== 'disabled'
+    const isDoublePressEnabled = this.options.clickSpeedDouble !== 'disabled'
+    const allowNonCompliant = !!this.options.matterAllowNonCompliantSinglePress
 
     const parts = sortedAliases.map((alias) => {
       const switchCluster: Record<string, number> = {
         currentPosition: 0,
         numberOfPositions: 2, // Button has 2 positions: unpressed (0) and pressed (1)
+        multiPressMax:
+          allowNonCompliant && !isDoublePressEnabled
+            ? 1 // Non-compliant: single press only
+            : 2, // Compliant: must be >= 2
       }
-
-      // Matter's Switch cluster uses multiPressMax to advertise multi-press support.
-      // The Matter spec requires multiPressMax >= 2; use 2 regardless of whether
-      // double-press is enabled (we simply won't emit multi-press events when disabled).
-      switchCluster.multiPressMax = 2
 
       // longPressTime indicates long-press capability. Omit it when disabled.
       if (isLongPressEnabled) {
@@ -625,13 +628,16 @@ export class PicoRemote {
 // with a non-empty array counts, which makes the check forward-compatible
 // with future LEAP types while ignoring unrelated array fields LEAP may add.
 export function presetIsProgrammed(preset: unknown): boolean {
-  if (!preset || typeof preset !== 'object')
+  if (!preset || typeof preset !== 'object') {
     return false
+  }
   for (const [k, v] of Object.entries(preset as Record<string, unknown>)) {
-    if (!k.endsWith('Assignments'))
+    if (!k.endsWith('Assignments')) {
       continue
-    if (Array.isArray(v) && v.length > 0)
+    }
+    if (Array.isArray(v) && v.length > 0) {
       return true
+    }
   }
   return false
 }

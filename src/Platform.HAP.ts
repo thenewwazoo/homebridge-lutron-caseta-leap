@@ -41,6 +41,7 @@ export interface GlobalOptions {
   clickSpeedDouble: 'quick' | 'default' | 'relaxed' | 'disabled'
   logSSLKeyDangerous: boolean
   // Plugin-level log verbosity. See src/Logger.ts for what each value does.
+  matterAllowNonCompliantSinglePress?: boolean
   logLevel: LogLevelOption
   // Specifically governs button-press log lines (raw Press/Release events
   // and interpreted short/long/double press events). Independent of logLevel
