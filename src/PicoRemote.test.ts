@@ -145,14 +145,17 @@ describe('picoRemote.getMatterClusters', () => {
       },
     }
 
-    const { platform, accessory } = createPlatformAndAccessory()
-    const remote = new PicoRemote(
-      platform,
-      accessory,
+    // Test with both double and long press disabled
+    // If non-compliant option is OFF, multiPressMax should be 2 (spec-compliant)
+    const { platform: platform1, accessory: accessory1 } = createPlatformAndAccessory()
+    const remote1 = new PicoRemote(
+      platform1,
+      accessory1,
       {} as any,
       createOptions({
         clickSpeedDouble: 'disabled',
         clickSpeedLong: 'disabled',
+        matterAllowNonCompliantSinglePress: false,
       }),
       {
         deviceTypes: {
@@ -160,14 +163,36 @@ describe('picoRemote.getMatterClusters', () => {
         },
       },
     )
-
-    const clusters = remote.getMatterClusters()
-    const parts = (clusters as any).parts
-
-    expect(parts).toHaveLength(2)
-    for (const part of parts) {
-      // Matter spec requires multiPressMax >= 2; always 2 regardless of double-press config
+    const clusters1 = remote1.getMatterClusters()
+    const parts1 = (clusters1 as any).parts
+    expect(parts1).toHaveLength(2)
+    for (const part of parts1) {
       expect(part.clusters.switch.multiPressMax).toBe(2)
+      expect(part.clusters.switch.longPressTime).toBeUndefined()
+    }
+
+    // If non-compliant option is ON, multiPressMax should be undefined
+    const { platform: platform2, accessory: accessory2 } = createPlatformAndAccessory()
+    const remote2 = new PicoRemote(
+      platform2,
+      accessory2,
+      {} as any,
+      createOptions({
+        clickSpeedDouble: 'disabled',
+        clickSpeedLong: 'disabled',
+        matterAllowNonCompliantSinglePress: true,
+      }),
+      {
+        deviceTypes: {
+          GenericSwitch: genericSwitchDeviceType,
+        },
+      },
+    )
+    const clusters2 = remote2.getMatterClusters()
+    const parts2 = (clusters2 as any).parts
+    expect(parts2).toHaveLength(2)
+    for (const part of parts2) {
+      expect(part.clusters.switch.multiPressMax).toBeUndefined()
       expect(part.clusters.switch.longPressTime).toBeUndefined()
     }
   })

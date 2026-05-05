@@ -76,6 +76,12 @@
               { "title": "Debug — visible only with global debug", "enum": ["debug"] },
               { "title": "Silent — never logged", "enum": ["silent"] }
             ]
+          },
+          "matterAllowNonCompliantSinglePress": {
+            "type": "boolean",
+            "title": "Allow non-compliant Matter single-press-only mode (breaks spec, hides double/long press in Home app)",
+            "description": "If enabled, and double press is disabled, exposes Pico remotes as single-press only in Matter (multiPressMax: 1). This breaks the Matter spec but improves Home app UI. Requires re-pairing to take effect.",
+            "default": false
           }
 
         }
@@ -164,6 +170,12 @@
               "notitle": false,
               "type": "string",
               "flex": "1 1 150px"
+            },
+            {
+              "key": "options.matterAllowNonCompliantSinglePress",
+              "notitle": false,
+              "type": "boolean",
+              "flex": "1 1 300px"
             }
           ]
 

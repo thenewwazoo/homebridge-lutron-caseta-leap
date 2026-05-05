@@ -35,6 +35,11 @@ interface PlatformEvents {
 
 // see config.schema.json
 export interface GlobalOptions {
+  /**
+   * If true, and double press is disabled, expose Pico remotes as single-press only in Matter (multiPressMax: 1).
+   * This breaks the Matter spec but may improve Home app UI. Requires re-pairing to take effect.
+   */
+  matterAllowNonCompliantSinglePress?: boolean
   filterPico: boolean
   excludedDeviceTypes: string[]
   clickSpeedLong: 'quick' | 'default' | 'relaxed' | 'disabled'
@@ -168,7 +173,9 @@ export class LutronCasetaLeap
         // second unhandledRejection event rather than a process exit, so we
         // use process.nextTick() to break out of the handler's call stack.
         this.log.warn('Unhandled promise rejection (not a known lutron-leap timeout):', reason)
-        process.nextTick(() => { throw reason })
+        process.nextTick(() => {
+          throw reason
+        })
       })
     }
 

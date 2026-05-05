@@ -8,6 +8,13 @@
 
         <h4 class="card-title">Global Options</h4>
         <form id='optionsForm' class="form-horizontal">
+                <div class="form-check row py-sm-3 mb-0">
+                    <input class="form-check-input col-sm-1" type="checkbox" value="" id="matterAllowNonCompliantSinglePressChk"/>
+                    <label class="form-check-label col-sm-11 text-left" for="matterAllowNonCompliantSinglePressChk">
+                        Allow non-compliant Matter single-press-only mode (breaks spec, hides double/long press in Home app)
+                    </label>
+                    <br/>
+                </div>
 
                 <div class="form-check row py-sm-3 mb-0">
                     <input class="form-check-input col-sm-1" type="checkbox" value="" id="filterPicoChk"/>
@@ -146,6 +153,7 @@
         document.querySelector('#clickSpeedLongSelect').value = pluginConfig[0].options.clickSpeedLong;
         document.querySelector('#clickSpeedDoubleSelect').value = pluginConfig[0].options.clickSpeedDouble;
         setSelectedDeviceTypes(pluginConfig[0].options.excludedDeviceTypes);
+        document.querySelector('#matterAllowNonCompliantSinglePressChk').checked = !!pluginConfig[0].options.matterAllowNonCompliantSinglePress;
 
         document.getElementById('optionsForm').addEventListener('input', () => {
             console.log("options clicked");
@@ -154,6 +162,7 @@
             pluginConfig[0].options.clickSpeedLong = document.querySelector('#clickSpeedLongSelect').value;
             pluginConfig[0].options.clickSpeedDouble = document.querySelector('#clickSpeedDoubleSelect').value;
             pluginConfig[0].options.excludedDeviceTypes = getSelectedDeviceTypes();
+            pluginConfig[0].options.matterAllowNonCompliantSinglePress = document.querySelector('#matterAllowNonCompliantSinglePressChk').checked;
             console.log(pluginConfig[0].options);
             homebridge.updatePluginConfig(pluginConfig);
         });
