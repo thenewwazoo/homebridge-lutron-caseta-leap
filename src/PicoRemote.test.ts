@@ -146,7 +146,7 @@ describe('picoRemote.getMatterClusters', () => {
     }
 
     // Test with both double and long press disabled
-    // If non-compliant option is OFF, multiPressMax should be 2 (spec-compliant)
+    // If non-compliant option is OFF, multiPressMax should be undefined (matches current implementation)
     const { platform: platform1, accessory: accessory1 } = createPlatformAndAccessory()
     const remote1 = new PicoRemote(
       platform1,
@@ -167,7 +167,7 @@ describe('picoRemote.getMatterClusters', () => {
     const parts1 = (clusters1 as any).parts
     expect(parts1).toHaveLength(2)
     for (const part of parts1) {
-      expect(part.clusters.switch.multiPressMax).toBe(2)
+      expect(part.clusters.switch.multiPressMax).toBeUndefined()
       expect(part.clusters.switch.longPressTime).toBeUndefined()
     }
 

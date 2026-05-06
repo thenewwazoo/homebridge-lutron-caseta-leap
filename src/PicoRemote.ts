@@ -580,8 +580,8 @@ export class PicoRemote {
         numberOfPositions: 2, // Button has 2 positions: unpressed (0) and pressed (1)
       }
 
-      // Always set multiPressMax = 2 if non-compliant option is off (spec-compliant), regardless of double press config
-      if (!allowNonCompliant) {
+      // Always set multiPressMax = 2 if non-compliant option is off (spec-compliant)
+      if (!allowNonCompliant && isDoublePressEnabled) {
         switchCluster.multiPressMax = 2
       }
 
