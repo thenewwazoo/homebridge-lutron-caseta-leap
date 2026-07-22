@@ -9,6 +9,7 @@
 - chore: standardise the package manifest with the other org plugins
 - docs: add claude and copilot instructions files
 - docs: use the standard org readme banner
+- chore(deps): dependency updates
 
 ## [3.1.3](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v3.1.3) (2026-05-04)
 
