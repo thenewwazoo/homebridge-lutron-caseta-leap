@@ -46,9 +46,9 @@ export class WallSwitch {
         const statusZoneHref = typeof status.Zone === 'string'
           ? status.Zone
           : (typeof status.Zone === 'object'
-              && status.Zone !== null
-              && 'href' in status.Zone
-              && typeof status.Zone.href === 'string')
+            && status.Zone !== null
+            && 'href' in status.Zone
+            && typeof status.Zone.href === 'string')
               ? status.Zone.href
               : undefined
 

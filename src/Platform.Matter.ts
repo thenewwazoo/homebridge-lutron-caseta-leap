@@ -132,7 +132,7 @@ export class LutronCasetaLeapMatterPlatform extends LutronCasetaLeap {
     switch (d.DeviceType) {
       case 'SmartBridge':
         // Suppress SmartBridge from logging or registration
-        return Promise.resolve(`Skipped Matter registration for SmartBridge`)
+        return Promise.resolve('Skipped Matter registration for SmartBridge')
       case 'Pico2Button':
       case 'Pico2ButtonRaiseLower':
       case 'Pico3Button':

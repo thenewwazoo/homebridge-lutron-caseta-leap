@@ -80,7 +80,7 @@ class PluginUiServer extends HomebridgePluginUiServer {
           const res = response as { Body: { Status: { Permissions: string[] } } }
           if (res.Body.Status.Permissions.includes('PhysicalAccess')) {
             // console.log('Physical access confirmed')
-            this.pushEvent('toast', { message: `Physical access confirmed` })
+            this.pushEvent('toast', { message: 'Physical access confirmed' })
             clearTimeout(t)
             resolve()
           } else {

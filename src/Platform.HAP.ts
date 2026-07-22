@@ -168,7 +168,9 @@ export class LutronCasetaLeap
         // second unhandledRejection event rather than a process exit, so we
         // use process.nextTick() to break out of the handler's call stack.
         this.log.warn('Unhandled promise rejection (not a known lutron-leap timeout):', reason)
-        process.nextTick(() => { throw reason })
+        process.nextTick(() => {
+          throw reason
+        })
       })
     }
 
@@ -566,7 +568,7 @@ export class LutronCasetaLeap
         this.log.info('Found a Serena blind:', fullName)
 
         // SIDE EFFECT: this constructor mutates the accessory object
-        new SerenaTiltOnlyWoodBlinds(this, accessory, bridge)
+        void new SerenaTiltOnlyWoodBlinds(this, accessory, bridge)
 
         return {
           kind: DeviceWireResultType.Success,
