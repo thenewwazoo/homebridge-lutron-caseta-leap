@@ -1,4 +1,4 @@
-## v3.1.6 (Pending Release)
+## v3.1.6 (2026-07-25)
 
 ### Changed
 
@@ -10,6 +10,7 @@
 - docs: add claude and copilot instructions files
 - docs: use the standard org readme banner
 - chore(deps): dependency updates
+- chore(github): use the shared homebridge action to deprecate past pre-releases
 
 ## [3.1.3](https://github.com/homebridge-plugins/homebridge-lutron/releases/tag/v3.1.3) (2026-05-04)
 
