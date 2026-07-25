@@ -1,3 +1,10 @@
+## v3.1.7 (Pending Release)
+
+### Changed
+
+- chore(deps): dependency updates
+- feat(matter): add an opt-in option to show pico remotes as single-press only, for a simpler home app tile
+
 ## v3.1.6 (2026-07-25)
 
 ### Changed

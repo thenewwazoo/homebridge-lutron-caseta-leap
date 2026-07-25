@@ -571,6 +571,7 @@ export class PicoRemote {
     const sortedAliases = Array.from(dentry.values()).sort((a, b) => a.index - b.index)
     this.platform.log.debug(`[Matter] Creating ${sortedAliases.length} button parts for '${type}'`)
     const isLongPressEnabled = this.options.clickSpeedLong !== 'disabled'
+    const allowNonCompliant = !!this.options.matterAllowNonCompliantSinglePress
 
     const parts = sortedAliases.map((alias) => {
       const switchCluster: Record<string, number> = {
@@ -581,7 +582,11 @@ export class PicoRemote {
       // Matter's Switch cluster uses multiPressMax to advertise multi-press support.
       // The Matter spec requires multiPressMax >= 2; use 2 regardless of whether
       // double-press is enabled (we simply won't emit multi-press events when disabled).
-      switchCluster.multiPressMax = 2
+      // Omitting it entirely is what broke Pico registration before (see v3.1.2), so
+      // this is only skipped when the user deliberately opts out.
+      if (!allowNonCompliant) {
+        switchCluster.multiPressMax = 2
+      }
 
       // longPressTime indicates long-press capability. Omit it when disabled.
       if (isLongPressEnabled) {

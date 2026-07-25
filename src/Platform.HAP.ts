@@ -35,6 +35,13 @@ interface PlatformEvents {
 
 // see config.schema.json
 export interface GlobalOptions {
+  /**
+   * Expose Pico remotes as single-press only in Matter by omitting `multiPressMax`.
+   * This breaks the Matter spec, but gives a tidier tile in the Home app. Off by
+   * default, since omitting the attribute is what stopped Picos registering in
+   * v3.1.2. Requires re-pairing to take effect.
+   */
+  matterAllowNonCompliantSinglePress?: boolean
   filterPico: boolean
   excludedDeviceTypes: string[]
   clickSpeedLong: 'quick' | 'default' | 'relaxed' | 'disabled'

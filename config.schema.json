@@ -76,6 +76,12 @@
               { "title": "Debug — visible only with global debug", "enum": ["debug"] },
               { "title": "Silent — never logged", "enum": ["silent"] }
             ]
+          },
+          "matterAllowNonCompliantSinglePress": {
+            "type": "boolean",
+            "title": "Show Pico remotes as single-press only in Matter (breaks the Matter spec)",
+            "description": "Advanced. Hides double and long press from the Home app, giving a simpler tile. This deliberately breaks the Matter specification, and some controllers may then refuse to register your Pico remotes at all. Leave off unless you specifically want the simpler tile. You must re-pair the bridge for a change here to take effect.",
+            "default": false
           }
 
         }
@@ -217,6 +223,12 @@
               "notitle": false,
               "type": "string",
               "flex": "1 1 200px"
+            },
+            {
+              "key": "options.matterAllowNonCompliantSinglePress",
+              "notitle": false,
+              "type": "boolean",
+              "flex": "1 1 300px"
             }
           ]
         }

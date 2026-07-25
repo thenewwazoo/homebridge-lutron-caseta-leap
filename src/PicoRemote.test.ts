@@ -171,4 +171,50 @@ describe('picoRemote.getMatterClusters', () => {
       expect(part.clusters.switch.longPressTime).toBeUndefined()
     }
   })
+
+  it('omits multiPressMax only when matterAllowNonCompliantSinglePress is opted into', () => {
+    const switchServer = { name: 'SwitchServer' }
+    const makeDeviceType = () => ({
+      with: vi.fn(() => ({ name: 'GenericSwitch+SwitchServer' })),
+      requirements: {
+        server: {
+          mandatory: {
+            Switch: switchServer,
+          },
+        },
+      },
+    })
+
+    const partsFor = (matterAllowNonCompliantSinglePress: boolean) => {
+      const { platform, accessory } = createPlatformAndAccessory()
+      const remote = new PicoRemote(
+        platform,
+        accessory,
+        {} as any,
+        createOptions({
+          clickSpeedDouble: 'disabled',
+          clickSpeedLong: 'disabled',
+          matterAllowNonCompliantSinglePress,
+        }),
+        {
+          deviceTypes: {
+            GenericSwitch: makeDeviceType(),
+          },
+        },
+      )
+      return (remote.getMatterClusters() as any).parts
+    }
+
+    // Opted in: the attribute is dropped, which is what gives the simpler Home
+    // app tile at the cost of breaking the spec
+    for (const part of partsFor(true)) {
+      expect(part.clusters.switch.multiPressMax).toBeUndefined()
+    }
+
+    // Left off (the default): still spec-compliant, so Picos keep registering.
+    // Dropping the attribute here is what broke registration in v3.1.2.
+    for (const part of partsFor(false)) {
+      expect(part.clusters.switch.multiPressMax).toBe(2)
+    }
+  })
 })
