@@ -6,12 +6,12 @@
   "customUiPath": "./dist/homebridge-ui",
   "schema": {
     "type": "object",
+    "required": ["name"],
     "properties": {
       "name": {
         "type": "string",
         "title": "Name",
-        "default": "Lutron",
-        "required": true
+        "default": "Lutron"
       },
       "options": {
         "type": "object",

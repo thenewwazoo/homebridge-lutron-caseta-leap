@@ -4,6 +4,7 @@
 
 - chore(deps): dependency updates
 - feat(matter): add an opt-in option to show pico remotes as single-press only, for a simpler home app tile
+- fix(schema): declare required fields the standard way so the homebridge ui stops reporting a config validation failure
 
 ## v3.1.6 (2026-07-25)
 
