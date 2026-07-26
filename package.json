@@ -15,6 +15,7 @@
   "keywords": [
     "homebridge-plugin",
     "supports-matter",
+    "supports-hap",
     "lutron",
     "caseta",
     "lutron-leap",
