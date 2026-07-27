@@ -3,9 +3,12 @@
 ### Changed
 
 - chore(deps): dependency updates
+- docs(github): name this plugin's devices in the issue forms instead of meater
 - feat(matter): add an opt-in option to show pico remotes as single-press only, for a simpler home app tile
 - fix(schema): declare required fields the standard way so the homebridge ui stops reporting a config validation failure
 - chore: declare the supports-hap transport keyword for the homebridge ui
+- chore(deps): dependency updates
+- docs(changelog): list every unreleased commit in the pending section
 
 ## v3.1.6 (2026-07-25)
 
