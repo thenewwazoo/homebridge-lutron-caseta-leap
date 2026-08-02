@@ -10,6 +10,7 @@
 - chore(github): check the changelog against the commits in ci
 - chore(deps): dependency updates
 - chore: remove personal funding links
+- docs: add node 26 to the supported node versions
 
 ## v3.1.7 (2026-07-27)
 
