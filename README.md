@@ -48,7 +48,6 @@ Homebridge plugin to integrate Lutron Caséta devices into HomeKit
 - [Common Errors](https://github.com/homebridge-plugins/homebridge-lutron/wiki/Common-Errors)
 - [Support Request](https://github.com/homebridge-plugins/homebridge-lutron/issues/new/choose)
 - [Changelog](https://github.com/homebridge-plugins/homebridge-lutron/blob/latest/CHANGELOG.md)
-- [About Me](https://github.com/sponsors/bwp91)
 
 ### Credits
 
