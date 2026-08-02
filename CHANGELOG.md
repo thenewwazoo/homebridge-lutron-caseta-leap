@@ -11,6 +11,7 @@
 - chore(deps): dependency updates
 - chore: remove personal funding links
 - docs: add node 26 to the supported node versions
+- chore: exclude test files and the test config from the published package
 
 ## v3.1.7 (2026-07-27)
 

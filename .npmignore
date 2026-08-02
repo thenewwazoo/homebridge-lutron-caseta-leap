@@ -136,3 +136,12 @@ web_modules/
 
 vitest.config.ts
 .idea
+
+# tests
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+/test
+/__tests__
+vitest.config.js
