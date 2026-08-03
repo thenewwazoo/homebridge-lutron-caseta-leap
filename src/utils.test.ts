@@ -2,7 +2,7 @@ import type { PlatformConfig } from 'homebridge'
 
 import { describe, expect, it, vi } from 'vitest'
 
-import { createPlatformProxy, normalizeConfig } from './utils.js'
+import { createPlatformProxy, normalizeConfig, withTimeout } from './utils.js'
 
 // ---------------------------------------------------------------------------
 // normalizeConfig
@@ -30,6 +30,74 @@ describe('normalizeConfig', () => {
   it('preserves arbitrary extra fields from raw config', () => {
     const cfg = normalizeConfig({ platform: 'LutronCasetaLeap', secrets: ['x'] } as any)
     expect((cfg as any).secrets).toEqual(['x'])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// withTimeout
+// ---------------------------------------------------------------------------
+
+describe('withTimeout', () => {
+  it('resolves with the wrapped value when the promise settles in time', async () => {
+    await expect(withTimeout(Promise.resolve(42), 1000, 'too slow')).resolves.toBe(42)
+  })
+
+  it('propagates the wrapped rejection unchanged', async () => {
+    await expect(withTimeout(Promise.reject(new Error('inner')), 1000, 'too slow')).rejects.toThrow('inner')
+  })
+
+  it('rejects with the timeout message when the promise never settles', async () => {
+    vi.useFakeTimers()
+    try {
+      const hung = new Promise(() => { /* never settles */ })
+      const bounded = withTimeout(hung, 500, 'too slow')
+      const assertion = expect(bounded).rejects.toThrow('too slow')
+      await vi.advanceTimersByTimeAsync(500)
+      await assertion
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('clears the timer as soon as the wrapped promise settles', async () => {
+    // Promise.race would leave the 60s timer armed here, holding a handle on
+    // the event loop long after the work finished.
+    vi.useFakeTimers()
+    try {
+      await withTimeout(Promise.resolve('done'), 60_000, 'too slow')
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps a late rejection observed instead of leaking it', async () => {
+    // The #236 failure mode: the wrapped promise rejects AFTER the bound has
+    // already fired. Promise.race would leave that rejection unhandled, which
+    // is fatal to the Homebridge child bridge.
+    vi.useFakeTimers()
+    const unhandled: unknown[] = []
+    const onUnhandled = (reason: unknown) => unhandled.push(reason)
+    process.on('unhandledRejection', onUnhandled)
+    try {
+      let rejectLate: (e: Error) => void = () => {}
+      const slow = new Promise((_resolve, reject) => {
+        rejectLate = reject
+      })
+      const bounded = withTimeout(slow, 40, 'too slow')
+      const assertion = expect(bounded).rejects.toThrow('too slow')
+      await vi.advanceTimersByTimeAsync(40)
+      await assertion
+
+      rejectLate(new Error('late failure'))
+      await vi.advanceTimersByTimeAsync(100)
+      // Give the microtask queue a chance to surface an unhandled rejection.
+      await Promise.resolve()
+      expect(unhandled).toHaveLength(0)
+    } finally {
+      process.off('unhandledRejection', onUnhandled)
+      vi.useRealTimers()
+    }
   })
 })
 
