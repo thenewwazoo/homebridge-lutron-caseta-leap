@@ -86,10 +86,18 @@ export class OccupancySensorRouter {
 
         // when the bridge is disconnected, subscriptions are lost. re-establish them.
         bridge.on('disconnected', () => {
-          bridge.subscribeToOccupancy(_handleOccupancyUpdate.bind(this)).then(_handleGlobalUpdate.bind(this))
-          // WARNING: uncaught throw here will crash the program, but
-          // there's nothing to be done if re-subscribing fails.
-          // better to just blow it all up.
+          bridge.subscribeToOccupancy(_handleOccupancyUpdate.bind(this))
+            .then(_handleGlobalUpdate.bind(this))
+            // Previously uncaught by design ("better to just blow it all up"),
+            // but crashing the child bridge is the #236 failure class: the
+            // restart corrupts the accessory cache and costs users their room
+            // assignments. A failed re-subscribe is now observed and logged on
+            // this file's debug channel (the router is a singleton with no
+            // Homebridge logger), and is retried on the next 'disconnected'
+            // emission.
+            .catch((e) => {
+              logDebug('failed to re-subscribe to occupancy updates after reconnect:', e)
+            })
         })
       }),
     )

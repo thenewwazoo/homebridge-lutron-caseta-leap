@@ -22,16 +22,39 @@ import {
   SmartBridge,
 } from 'lutron-leap'
 
+import { ConnectionWatchdog } from './ConnectionWatchdog.js'
 import { createFilteredLogger } from './Logger.js'
 import { OccupancySensor } from './OccupancySensor.js'
 import { PicoRemote } from './PicoRemote.js'
 import { SerenaTiltOnlyWoodBlinds } from './SerenaTiltOnlyWoodBlinds.js'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js'
+import { withTimeout } from './utils.js'
 
 interface PlatformEvents {
   [event: string]: (...args: any[]) => void
   unsolicited: (response: Response) => void
 }
+
+// How long a watchdog repair waits for a TLS connection before giving up and
+// retrying on the next cycle. Deliberately short: a repair that cannot connect
+// quickly should fail fast and leave the existing connection alone rather than
+// tearing it down and blocking every other recovery path while it retries.
+const REVIVE_CONNECT_TIMEOUT_MS = 10_000
+// Upper bound on wiring a single device. Without it, one LEAP request that
+// never settles (see the comment on getDeviceInfoWithRetry) strands
+// Promise.allSettled and leaves the bridge in activeScanBridges forever,
+// silently disabling all later scans.
+const DEVICE_WIRE_TIMEOUT_MS = 60_000
+// A wiringDevices claim normally releases when the wiring settles, but a
+// wiring stranded by drain() can NEVER settle: drain() clears the in-flight
+// map without rejecting, dropping the only reference to the promise's
+// resolver. A claim held solely by such a promise would exclude the device
+// from every future scan until restart, so claims also expire. Expiry is
+// safe: a wire hung that way has no remaining path to completion, so it can
+// never race a later retry, and a genuinely slow-but-alive wire finishes far
+// inside this bound (the library caps each armed request at 5s, and a device
+// wires with at most a couple dozen requests).
+const WIRING_CLAIM_TTL_MS = 3 * DEVICE_WIRE_TIMEOUT_MS
 
 // see config.schema.json
 export interface GlobalOptions {
@@ -94,6 +117,25 @@ export class LutronCasetaLeap
   private options: GlobalOptions
   private secrets: Map<string, BridgeAuthEntry>
   private bridgeMgr: Map<string, SmartBridge> = new Map()
+  // Last known IP address per bridge, refreshed on every mDNS announce. The
+  // watchdog uses it to rebuild a client when the connection has gone stale
+  // and no fresh announce is available to supply an address.
+  private bridgeAddrs: Map<string, string> = new Map()
+  // One ConnectionWatchdog per bridge; see ConnectionWatchdog.ts for why the
+  // plugin needs its own staleness repair on top of lutron-leap's ping loop.
+  private watchdogs: Map<string, ConnectionWatchdog> = new Map()
+  // Bridges whose LEAP subscriptions were destroyed by a reconfigure that then
+  // failed to reconnect. They must be re-subscribed once the bridge answers
+  // again, because a reachable bridge with no subscriptions looks healthy to a
+  // ping while delivering no button or occupancy events at all.
+  private bridgesNeedingResubscribe: Set<string> = new Set()
+  // Devices whose processDevice() is currently in flight: accessory UUID to
+  // the claim timestamp. See the filter in processAllDevices() and the
+  // WIRING_CLAIM_TTL_MS comment for why claims expire.
+  private wiringDevices: Map<string, number> = new Map()
+  // TLS keylog streams, one per bridge, kept so rebuilding a client does not
+  // leak a file handle each time. Only populated when logSSLKeyDangerous is on.
+  private keylogStreams: Map<string, fs.WriteStream> = new Map()
   // Log is declared as a regular field rather than a constructor parameter
   // property because we need to wrap it (with the user's logLevel filter)
   // before the rest of the constructor — and parameter properties are
@@ -215,6 +257,16 @@ export class LutronCasetaLeap
       this.finder.beginSearching()
     })
 
+    api.on(APIEvent.SHUTDOWN, () => {
+      // Stop pinging on the way out. The intervals are unref'd so they cannot
+      // hold the process open by themselves, but a repair started during
+      // shutdown would keep opening sockets against a bridge nobody is
+      // listening to any more.
+      for (const watchdog of this.watchdogs.values()) {
+        watchdog.stop()
+      }
+    })
+
     process.on('SIGUSR2', () => {
       const fileName = `/tmp/lutron.${Date.now()}.heapsnapshot`
       const usage = process.memoryUsage()
@@ -291,6 +343,16 @@ export class LutronCasetaLeap
     let replaceClient = false
     const bridgeID = bridgeInfo.bridgeid.toLowerCase()
 
+    // Record the address before any early return below. BridgeFinder only
+    // emits 'discovered' on an absent-to-present transition, so an announce
+    // dropped here is usually the ONLY one that will ever carry a new DHCP
+    // address. Returning early without recording it would leave the watchdog
+    // rebuilding clients for an address the bridge no longer has, which is the
+    // exact permanent-wedge this watchdog exists to prevent.
+    if (this.secrets.has(bridgeID)) {
+      this.bridgeAddrs.set(bridgeID, bridgeInfo.ipAddr)
+    }
+
     if (this.bridgeMgr.has(bridgeID)) {
       // this is an existing bridge re-announcing itself, so we'll recycle the connection to it
       if (this.bridgeMgr.get(bridgeID)!.bridgeReconfigInProgress === true) {
@@ -307,15 +369,9 @@ export class LutronCasetaLeap
     }
 
     if (this.secrets.has(bridgeID)) {
-      const these = this.secrets.get(bridgeID)!
-      this.log.debug('bridge', bridgeInfo.bridgeid, 'has secrets', JSON.stringify(these))
+      this.log.debug('bridge', bridgeInfo.bridgeid, 'has secrets configured')
 
-      let logfile: fs.WriteStream | undefined
-      if (this.options.logSSLKeyDangerous) {
-        logfile = fs.createWriteStream(`/tmp/${bridgeInfo.bridgeid}-tlskey.log`, { flags: 'a' })
-      }
-
-      const client = new LeapClient(bridgeInfo.ipAddr, LEAP_PORT, these.ca, these.key, these.cert, logfile)
+      const client = this.createLeapClient(bridgeID, bridgeInfo.ipAddr)
 
       if (replaceClient) {
         // when we close the client connection, it disconnects, which
@@ -346,7 +402,30 @@ export class LutronCasetaLeap
         // Bookend an internal reconfigure operation. Useful when debugging
         // a reconfigure issue, but normal-path noise otherwise. info → debug.
         this.log.debug('Bridge', bridgeInfo.bridgeid, 'entering reconfiguration')
-        await this.bridgeMgr.get(bridgeID)!.reconfigureBridge(client)
+        this.clearLibraryPingLoop(this.bridgeMgr.get(bridgeID)!)
+        try {
+          await this.bridgeMgr.get(bridgeID)!.reconfigureBridge(client)
+        } catch (e) {
+          // Swallowing this error is deliberate: it runs as an mDNS event
+          // handler with no caller to catch it, and letting it escape is the
+          // #236 class of failure (an unhandled rejection kills the child
+          // bridge and corrupts the accessory cache). Swallowing it is also
+          // exactly why the flag below must be reset by hand.
+          //
+          // reconfigureBridge() sets bridgeReconfigInProgress with no
+          // try/finally, so a throw leaves it stuck true. Left set, it turns
+          // every future mDNS announce into a no-op and makes the watchdog
+          // skip its pings, wedging the connection until Homebridge restarts.
+          this.bridgeMgr.get(bridgeID)!.bridgeReconfigInProgress = false
+          // drain() already cleared every LEAP subscription before the connect
+          // failed, so the bridge is now subscription-less even if the socket
+          // later comes back on its own. Mark it so the watchdog re-subscribes
+          // as soon as the bridge answers again.
+          this.bridgesNeedingResubscribe.add(bridgeID)
+          this.log.error('Bridge', bridgeInfo.bridgeid, 'reconfiguration failed; will retry on the next announce or watchdog pass:', e)
+          return
+        }
+        this.bridgesNeedingResubscribe.delete(bridgeID)
         this.log.debug('Bridge', bridgeInfo.bridgeid, 'exit reconfiguration')
         // reconfigureBridge() emits 'disconnected' so already-wired devices
         // re-subscribe via their own handlers. Call processAllDevices() to
@@ -361,15 +440,181 @@ export class LutronCasetaLeap
         // see [#123](https://github.com/homebridge-plugins/homebridge-lutron/issues/123)
         bridge.setMaxListeners(400)
 
+        // Any 'disconnected' emission, from whatever source, makes every
+        // device re-subscribe through its own handler, so an outstanding
+        // repair is satisfied by it. Clearing the flag here is what stops
+        // resubscribeIfNeeded() emitting a SECOND time: PicoRemote
+        // re-subscribes all of its buttons unconditionally, so a redundant
+        // emission would leave two subscriptions per button, deliver every
+        // press twice, and desynchronise the press/release state machine.
+        bridge.on('disconnected', () => {
+          this.bridgesNeedingResubscribe.delete(bridgeID)
+        })
+
         this.bridgeMgr.set(bridge.bridgeID, bridge)
         this.processAllDevices(bridge)
       }
+      this.ensureWatchdog(bridgeID)
     } else {
       // Multi-bridge scenario noise — if the user has 2 bridges and only
       // configured 1, the unconfigured one will hit this branch on every
       // mDNS announce. info → debug.
       this.log.debug('no credentials from bridge ID', bridgeInfo.bridgeid)
     }
+  }
+
+  private createLeapClient(bridgeID: string, ipAddr: string): LeapClient {
+    const these = this.secrets.get(bridgeID)!
+    let logfile: fs.WriteStream | undefined
+    if (this.options.logSSLKeyDangerous) {
+      // Cached per bridge rather than per client. A client is rebuilt on every
+      // mDNS re-announce and on every watchdog repair, so creating a stream
+      // here would leak a file handle each time.
+      logfile = this.keylogStreams.get(bridgeID)
+      if (!logfile) {
+        logfile = fs.createWriteStream(`/tmp/${these.bridgeid}-tlskey.log`, { flags: 'a' })
+        logfile.on('error', e => this.log.warn(`TLS keylog stream for ${these.bridgeid} failed:`, e))
+        this.keylogStreams.set(bridgeID, logfile)
+      }
+    }
+    return new LeapClient(ipAddr, LEAP_PORT, these.ca, these.key, these.cert, logfile)
+  }
+
+  // reconfigureBridge() drops its reference to the running ping interval
+  // (`this.pingLooper = null`) without clearing it, so every reconfigure
+  // orphans a timer that keeps pinging every 5 minutes for the life of the
+  // process. Clear it before handing over a new client. Reaching into a
+  // private field is deliberate; bridge.close() is not usable here because it
+  // re-emits 'disconnected', which would make every device re-subscribe
+  // against the client we are about to discard.
+  private clearLibraryPingLoop(bridge: SmartBridge): void {
+    const looper = (bridge as unknown as { pingLooper: ReturnType<typeof setInterval> | null }).pingLooper
+    if (looper) {
+      clearInterval(looper)
+    }
+  }
+
+  private ensureWatchdog(bridgeID: string): void {
+    if (this.watchdogs.has(bridgeID)) {
+      return
+    }
+    const watchdog = new ConnectionWatchdog({
+      bridgeLabel: bridgeID,
+      ping: () => this.bridgeMgr.get(bridgeID)!.ping(),
+      revive: () => this.reviveBridge(bridgeID),
+      skip: () => this.bridgeMgr.get(bridgeID)?.bridgeReconfigInProgress === true,
+      onHealthy: () => this.resubscribeIfNeeded(bridgeID),
+      log: this.log,
+    })
+    watchdog.start()
+    this.watchdogs.set(bridgeID, watchdog)
+  }
+
+  // A ping proving the bridge answers is NOT the same as the plugin working.
+  // lutron-leap's request() awaits connect(), so a ping silently opens a new
+  // socket, and LeapClient._empty() cleared every subscription when the old
+  // one closed. Without this, a repair that died partway would leave a
+  // reachable bridge whose button presses and occupancy events never arrive,
+  // and the watchdog would report it healthy forever.
+  private async resubscribeIfNeeded(bridgeID: string): Promise<void> {
+    if (!this.bridgesNeedingResubscribe.has(bridgeID)) {
+      return
+    }
+    const bridge = this.bridgeMgr.get(bridgeID)
+    if (!bridge || bridge.bridgeReconfigInProgress) {
+      return
+    }
+    this.bridgesNeedingResubscribe.delete(bridgeID)
+    this.log.info(`Bridge ${bridgeID} is answering again after an interrupted repair; re-subscribing devices`)
+    // PicoRemote and OccupancySensorRouter both listen for 'disconnected' and
+    // re-subscribe over bridge.client, which by now is the reconnected one.
+    bridge.emit('disconnected')
+    this.processAllDevices(bridge)
+  }
+
+  // Called by the per-bridge ConnectionWatchdog after consecutive ping
+  // failures. Mirrors the mDNS re-announce path: build a fresh client for
+  // the last known address and run it through reconfigureBridge(), which
+  // reconnects and emits 'disconnected' so devices re-subscribe at the LEAP
+  // layer. This exists because lutron-leap detects dead connections (its
+  // ping loop) but deliberately never repairs them, and mDNS re-announces
+  // are best-effort; without it, a half-open socket (router reboot, Wi-Fi
+  // blip) stays stale until Homebridge restarts.
+  // Returns true when this call performed the repair, false when it stood
+  // down because a reconfigure was already in progress; the watchdog uses
+  // the distinction to keep its success log line truthful.
+  private async reviveBridge(bridgeID: string): Promise<boolean> {
+    const bridge = this.bridgeMgr.get(bridgeID)
+    const ipAddr = this.bridgeAddrs.get(bridgeID)
+    if (!bridge || !ipAddr || !this.secrets.has(bridgeID)) {
+      throw new Error(`cannot revive bridge ${bridgeID}: no known address or credentials`)
+    }
+    if (bridge.bridgeReconfigInProgress) {
+      // The mDNS path is already replacing the client; nothing to do.
+      return false
+    }
+    const client = this.createLeapClient(bridgeID, ipAddr)
+
+    // Prove the bridge is reachable BEFORE handing the client to
+    // reconfigureBridge(). That call is not cancellable and not bounded: it
+    // drains the old client (destroying every subscription) and then retries
+    // connect up to 21 times, and tls.connect() is created with no timeout, so
+    // against a powered-off bridge it can sit for tens of minutes. For that
+    // entire window bridgeReconfigInProgress is true, which suppresses the
+    // watchdog and makes every mDNS announce a no-op: one hung repair would
+    // disable every recovery path the plugin has.
+    //
+    // Connecting first also makes the repair cheap when it fails. connect()
+    // memoises into LeapClient.connected, so reconfigureBridge() then succeeds
+    // on its first retry, and if we never get here the old client is left
+    // untouched with its subscriptions intact.
+    try {
+      await withTimeout(client.connect(), REVIVE_CONNECT_TIMEOUT_MS, `connection to bridge ${bridgeID} at ${ipAddr} timed out`)
+    } catch (e) {
+      // Discard the half-built client. A stalled TLS handshake leaves
+      // LeapClient.connected holding a promise that never settles, and every
+      // later connect() on that instance would return the same dead promise.
+      client.close()
+      throw new Error(`cannot reach bridge ${bridgeID} at ${ipAddr}: ${e}`)
+    }
+
+    // Re-check the guard now that we are past an await. A bridge recovering
+    // from a power cycle starts accepting TLS at the same moment it fires its
+    // absent-to-present mDNS announce, so the announce path can enter
+    // reconfigureBridge() while our pre-connect is in flight. Proceeding here
+    // would run two reconfigures on one bridge: 'disconnected' emitted twice,
+    // every button subscribed twice, every press delivered twice, and the
+    // press/release state machine reset by the invalid Press,Press sequence,
+    // which is precisely the dead-Pico symptom this watchdog exists to fix.
+    // The mDNS path sets the flag synchronously before its first await and
+    // there are no awaits between this check and our reconfigureBridge()
+    // call, so this closes the window completely.
+    if (bridge.bridgeReconfigInProgress) {
+      client.close()
+      this.log.debug(`Bridge ${bridgeID} reconfiguration started while the watchdog was connecting; standing down`)
+      return false
+    }
+
+    this.clearLibraryPingLoop(bridge)
+    try {
+      await bridge.reconfigureBridge(client)
+    } catch (e) {
+      // Same stuck-flag hazard as in handleBridgeDiscovery(): a failed
+      // reconfigure leaves bridgeReconfigInProgress true, which would block
+      // every future repair attempt. Reset it before propagating.
+      bridge.bridgeReconfigInProgress = false
+      // drain() runs before the connect retry, so the subscriptions are
+      // already gone even though the repair failed. Record that so the next
+      // successful ping re-subscribes rather than reporting a healthy bridge
+      // that silently delivers no events.
+      this.bridgesNeedingResubscribe.add(bridgeID)
+      throw e
+    }
+    this.bridgesNeedingResubscribe.delete(bridgeID)
+    // Retry any devices whose initialize() never completed; already-wired
+    // devices re-subscribed via the 'disconnected' event during reconfigure.
+    this.processAllDevices(bridge)
+    return true
   }
 
   // Wrap getDeviceInfo() with bounded exponential backoff. The plain bridge call
@@ -389,7 +634,13 @@ export class LutronCasetaLeap
         await new Promise(resolve => setTimeout(resolve, delay))
       }
       try {
-        return await bridge.getDeviceInfo()
+        // Bounded because lutron-leap's request() only arms its 5s timeout
+        // inside the socket.write callback; if the socket dies between
+        // connect and write, the request promise never settles at all. An
+        // unsettled getDeviceInfo() would keep this bridge in
+        // activeScanBridges forever (the .finally in processAllDevices()
+        // never runs), silently wedging every future scan.
+        return await withTimeout(bridge.getDeviceInfo(), 60_000, 'device inventory fetch timed out')
       } catch (error) {
         lastError = error
         this.log.warn(`Device inventory fetch failed (attempt ${attempt + 1}/${delaysMs.length + 1}):`, error)
@@ -427,11 +678,36 @@ export class LutronCasetaLeap
       // prevents duplicate 'disconnected' and 'unsolicited' listeners from
       // accumulating on PicoRemote and OccupancySensor instances each time
       // the bridge re-announces or a deviceheard event fires.
-      const unwiredDevices = devices.filter(
-        d => !this.wiredDevices.has(this.api.hap.uuid.generate(d.SerialNumber.toString())),
-      )
+      const now = Date.now()
+      const unwiredDevices = devices.filter((d) => {
+        const uuid = this.api.hap.uuid.generate(d.SerialNumber.toString())
+        if (this.wiredDevices.has(uuid)) {
+          return false
+        }
+        // wiringDevices covers the gap the wire timeout opens: the timeout
+        // bounds the SCAN, not the wiring itself, so a slow-but-alive
+        // processDevice() can still be running when a follow-up scan starts.
+        // Wiring it a second time would create two PicoRemote instances and
+        // deliver every press twice. Claims older than the TTL belong to a
+        // wiring that can no longer complete; treat the device as retryable.
+        const claimedAt = this.wiringDevices.get(uuid)
+        return claimedAt === undefined || now - claimedAt >= WIRING_CLAIM_TTL_MS
+      })
       const results: PromiseSettledResult<string>[] = await Promise.allSettled(
-        unwiredDevices.map((device: DeviceDefinition) => this.processDevice(bridge, device)),
+        unwiredDevices.map((device: DeviceDefinition) => {
+          const uuid = this.api.hap.uuid.generate(device.SerialNumber.toString())
+          this.wiringDevices.set(uuid, now)
+          const wiring = this.processDevice(bridge, device)
+          // Release on the UNDERLYING promise, not the timeout wrapper, so
+          // the device stays claimed for as long as the wiring is genuinely
+          // in flight and becomes retryable the moment it truly settles.
+          wiring.catch(() => {}).finally(() => this.wiringDevices.delete(uuid))
+          return withTimeout(
+            wiring,
+            DEVICE_WIRE_TIMEOUT_MS,
+            `wiring ${device.FullyQualifiedName.join(' ')} timed out`,
+          )
+        }),
       )
       for (const result of results) {
         switch (result.status) {

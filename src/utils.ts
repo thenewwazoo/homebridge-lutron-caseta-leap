@@ -17,6 +17,37 @@ export function normalizeConfig(raw?: PlatformConfig): LutronCasetaLeapPluginCon
 }
 
 /**
+ * Bounds a promise with a timeout.
+ *
+ * Deliberately not `Promise.race` against a bare reject-after-setTimeout
+ * promise, for two reasons this codebase has been bitten by:
+ *
+ *  - The timer is cleared as soon as the wrapped promise settles. Racing
+ *    leaves the timer armed for its full duration, so a fast call still pins
+ *    a handle on the event loop, and a 60s bound would keep the process
+ *    alive for 60s after the work finished.
+ *  - A rejection handler is attached to the wrapped promise unconditionally,
+ *    so a slow rejection arriving after the timeout has already fired stays
+ *    observed. Racing leaves that late rejection unhandled, which is the
+ *    pattern in lutron-leap's ping loop that crashed child bridges (#236).
+ */
+export function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms)
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
+}
+
+/**
  * Creates a proxy class that instantiates the correct platform implementation
  * (HAP or Matter) at runtime based on the Homebridge API capabilities and the
  * user's configuration.  The proxy delegates the `configureAccessory` call

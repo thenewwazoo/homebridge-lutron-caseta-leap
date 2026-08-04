@@ -481,7 +481,21 @@ export class PicoRemote {
     this.bridge.on('disconnected', () => {
       this.platform.log.debug(`re-subscribing to ${this.buttons.length} button(s) after connection loss`)
       for (const button of this.buttons) {
-        this.bridge.subscribeToButton(button, this.handleEvent.bind(this))
+        // Not subscribeToButton(): that discards the subscribe promise inside
+        // lutron-leap, so a failure (bridge still flaky right after a
+        // reconnect) is both invisible and fatal. The rejection surfaces as
+        // an unhandled rejection, and socket-level errors do not match the
+        // patterns the platform's unhandledRejection handler suppresses, so
+        // it kills the child bridge, which is the #236 class of failure.
+        // Subscribing through the client directly hands us the promise, so a
+        // failed re-subscribe becomes a visible warn instead of a crash.
+        this.bridge.client.subscribe(`${button.href}/status/event`, this.handleEvent.bind(this))
+          .catch((e: unknown) => {
+            this.platform.log.warn(
+              `Failed to re-subscribe ${button.href} after reconnect; this button will stay silent until the next reconnect:`,
+              e,
+            )
+          })
       }
     })
 

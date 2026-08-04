@@ -352,16 +352,30 @@ export class LutronCasetaLeapMatterPlatform extends LutronCasetaLeap {
 
     switch (result.kind) {
       case DeviceWireResultType.Error: {
+        // Mirror the HAP path's #207 cache-preservation rule: never unregister
+        // a cached accessory on a refresh-time failure. Error here is usually
+        // a transient bridge response during a rescan (and rescans now also
+        // run after every watchdog repair, so this path is hit during exactly
+        // the flaky windows when wiring is most likely to fail). Unregistering
+        // loses the user's Matter fabric placement, and a purged accessory
+        // does not come back until restart: the failed attempt already
+        // stamped accessory.parts, so the later successful wire computes no
+        // endpoint change and never re-registers.
         if (isFromCache) {
-          mApi.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
-          this.log.debug(`un-registered cached device ${fullName} (Matter) due to an error: ${result.reason}`)
+          this.log.warn(`Could not refresh device data for cached Matter device ${fullName}; leaving accessory registered: ${result.reason}`)
+          return Promise.resolve(`Leaving cached Matter accessory registered (refresh failed): ${fullName}`)
         }
         return Promise.reject(new Error(`Failed to wire device ${fullName}: ${result.reason}`))
       }
       case DeviceWireResultType.Skipped: {
+        // Same preservation rule for generic skips. Explicitly-excluded device
+        // types were already unregistered above, before this switch; anything
+        // else that reports Skipped for a cached accessory is a transient
+        // classification (filterPico responses missing AffectedZones, and
+        // similar) that can flip back on the next scan.
         if (isFromCache) {
-          this.log.debug(`un-registered cached device ${fullName} (Matter) because it was skipped`)
-          mApi.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
+          this.log.warn(`Skipping cached Matter device ${fullName}; leaving accessory registered: ${result.reason}`)
+          return Promise.resolve(`Leaving cached Matter accessory registered (skipped): ${fullName}`)
         }
         return Promise.resolve(`Skipped setting up device: ${result.reason}`)
       }
