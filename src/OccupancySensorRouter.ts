@@ -111,15 +111,28 @@ export class OccupancySensorRouter {
     // Create the key used for looking into the three state maps we're about to use
     const key = this.makeKey(bridge.bridgeID, occupancyGroup)
 
+    // Store this registration's callback first. The bridge re-subscribes to
+    // occupancy on its own after a reconnect, so the router can start receiving
+    // updates before the await below finishes - and if the callback is not in
+    // place by then, the updates arrive with nobody to hand them to.
+    this.cbMap.set(key, cb)
+
     // If we're not already subscribed to this bridge's updates, let's do that.
     if (!this.subMap.has(bridge.bridgeID)) {
       logDebug(`bridge ${bridge.bridgeID} is a new bridge`)
       this.subscribeToBridge(bridge)
     }
-    await this.subMap.get(bridge.bridgeID)
 
-    // Store this registration's callback
-    this.cbMap.set(key, cb)
+    try {
+      await this.subMap.get(bridge.bridgeID)
+    } catch (e) {
+      // A failed subscription used to stay in the map as a permanently rejected
+      // promise, so every later attempt awaited the same stale rejection and the
+      // sensor could never recover without restarting Homebridge. Drop it so the
+      // next registration tries again.
+      this.subMap.delete(bridge.bridgeID)
+      throw e
+    }
 
     // get stored state information for the occupancygroup that's
     // registering itself, and immediately call its callback to update it.
