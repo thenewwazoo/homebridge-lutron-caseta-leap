@@ -20,13 +20,26 @@
             "type": "boolean",
             "title": "Exclude Pico remotes that are associated with devices directly or in the Lutron app"
           },
-          "clickSpeed": {
+          "clickSpeedDouble": {
             "type": "string",
-            "title": "Double- and long-press speed",
+            "title": "Double-press speed",
+            "description": "How long a Pico waits for a second press before treating it as a single press.",
             "oneOf": [
-              { "title": "Fast", "enum": ["fast"] },
-              { "title": "Medium (default)", "enum": ["medium"] },
-              { "title": "Slow", "enum": ["slow"] }
+              { "title": "Quick", "enum": ["quick"] },
+              { "title": "Default", "enum": ["default"] },
+              { "title": "Relaxed", "enum": ["relaxed"] },
+              { "title": "Disabled", "enum": ["disabled"] }
+            ]
+          },
+          "clickSpeedLong": {
+            "type": "string",
+            "title": "Long-press speed",
+            "description": "How long a Pico button must be held before it counts as a long press.",
+            "oneOf": [
+              { "title": "Quick", "enum": ["quick"] },
+              { "title": "Default", "enum": ["default"] },
+              { "title": "Relaxed", "enum": ["relaxed"] },
+              { "title": "Disabled", "enum": ["disabled"] }
             ]
           },
           "excludedDeviceTypes": {
@@ -166,7 +179,13 @@
               "flex": "1 1 150px"
             },
             {
-              "key": "options.clickSpeed",
+              "key": "options.clickSpeedDouble",
+              "notitle": false,
+              "type": "string",
+              "flex": "1 1 150px"
+            },
+            {
+              "key": "options.clickSpeedLong",
               "notitle": false,
               "type": "string",
               "flex": "1 1 150px"
