@@ -15,6 +15,7 @@
 - fix: repair stale LEAP connections with a per-bridge ping watchdog (#267) (@simplytoast1)
 - fix: send pico button presses to matter, instead of nothing at all
 - fix: let an occupancy sensor recover after a failed subscription, without a restart
+- fix: report why bridge pairing failed, instead of an unrelated error
 
 ## v3.1.7 (2026-07-27)
 

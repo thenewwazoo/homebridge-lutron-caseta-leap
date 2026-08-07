@@ -97,11 +97,16 @@ class PluginUiServer extends HomebridgePluginUiServer {
     }
 
     const keys = await new Promise<forge.pki.KeyPair>((resolve, reject) => {
+      // node-forge calls this back with (null, keys) on success and (err) on
+      // failure. The test used to be `err !== undefined`, which is true in both
+      // cases - so a real key-generation failure resolved with an undefined key
+      // pair and the very next line threw an opaque TypeError instead of saying
+      // what went wrong, and the reject branch was unreachable.
       forge.pki.rsa.generateKeyPair({ bits: 2048 }, (err, keyPair) => {
-        if (err !== undefined) {
-          resolve(keyPair)
-        } else {
+        if (err) {
           reject(err)
+        } else {
+          resolve(keyPair)
         }
       })
     })
