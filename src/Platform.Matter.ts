@@ -46,6 +46,10 @@ function normalizeMatterDisplayName(fullName: string, serialNumber: string): str
  * `this.accessories` via the base-class implementation.
  */
 export class LutronCasetaLeapMatterPlatform extends LutronCasetaLeap {
+  protected override matterApiForDevices(): any | undefined {
+    return (this.api as any).matter
+  }
+
   constructor(log: Logging, config: PlatformConfig, api: API) {
     super(log, config, api)
     // Use this.log (wrapped by the base class with the user's logLevel) so

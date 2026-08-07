@@ -13,6 +13,7 @@
 - docs: add node 26 to the supported node versions
 - chore: exclude test files and the test config from the published package
 - fix: repair stale LEAP connections with a per-bridge ping watchdog (#267) (@simplytoast1)
+- fix: send pico button presses to matter, instead of nothing at all
 
 ## v3.1.7 (2026-07-27)
 

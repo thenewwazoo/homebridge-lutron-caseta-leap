@@ -807,6 +807,14 @@ export class LutronCasetaLeap
     }
   }
 
+  /**
+   * The Matter API handle to hand to devices that need to emit Matter events.
+   * Undefined in HAP mode; the Matter platform overrides this.
+   */
+  protected matterApiForDevices(): any | undefined {
+    return undefined
+  }
+
   async wireAccessory(
     accessory: PlatformAccessory,
     bridge: SmartBridge,
@@ -871,8 +879,14 @@ export class LutronCasetaLeap
       case 'PaddleSwitchPico': {
         this.log.info(`Found a ${device.DeviceType} remote ${fullName}`)
 
-        // SIDE EFFECT: this constructor mutates the accessory object
-        const remote = new PicoRemote(this, accessory, bridge, this.options)
+        // SIDE EFFECT: this constructor mutates the accessory object.
+        //
+        // This is the instance that owns the LEAP button subscriptions, so it is
+        // the one that has to be able to emit Matter gestures. It used to be built
+        // without a matterApi, and `emitMatterGesture` returns immediately without
+        // one - so with Matter enabled a Pico registered its button endpoints
+        // correctly and then never reported a single press.
+        const remote = new PicoRemote(this, accessory, bridge, this.options, this.matterApiForDevices())
         return remote.initialize()
       }
 
