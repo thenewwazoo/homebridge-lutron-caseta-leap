@@ -303,9 +303,17 @@ export class LutronCasetaLeapMatterPlatform extends LutronCasetaLeap {
         return Promise.resolve(`Skipped Matter registration for unsupported device: ${fullName}`)
     }
     if (matterFields && clusters) {
-      const previousParts = Array.isArray((accessory as any).parts)
-        ? (accessory as any).parts as Array<Record<string, any>>
-        : []
+      // Read the previous endpoints from context, not from the accessory object.
+      // Homebridge only persists `context` (plus a few known fields), so a plain
+      // own property like `parts` is dropped when the accessory is restored from
+      // cache - which made every cached Pico look "changed" on every start, and
+      // forced an unregister/re-register that loses the owner's Matter fabric
+      // placement each time, while never detecting a real endpoint change.
+      const previousParts = Array.isArray(accessory.context?.parts)
+        ? accessory.context.parts as Array<Record<string, any>>
+        : Array.isArray((accessory as any).parts)
+          ? (accessory as any).parts as Array<Record<string, any>>
+          : []
 
       // Matter validator requires these fields on the accessory object itself.
       Object.assign(accessory as any, matterFields)
@@ -315,8 +323,10 @@ export class LutronCasetaLeapMatterPlatform extends LutronCasetaLeap {
       if ('parts' in clusters && Array.isArray(clusters.parts) && clusters.parts.length > 0) {
         const nextParts = clusters.parts as Array<Record<string, any>>
 
-        // Composed device — set parts directly on the accessory
+        // Composed device — set parts directly on the accessory, and mirror them
+        // into context so the comparison above survives a restart
         ;(accessory as any).parts = nextParts
+        accessory.context.parts = nextParts
         delete (accessory as any).clusters
         delete (accessory as any).handlers
         this.log.debug(`[Matter] Registering composed device '${fullName}' with ${nextParts.length} endpoint(s)`)

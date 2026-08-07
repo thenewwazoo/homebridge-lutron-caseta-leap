@@ -17,6 +17,7 @@
 - fix: let an occupancy sensor recover after a failed subscription, without a restart
 - fix: report why bridge pairing failed, instead of an unrelated error
 - fix: offer the press-speed settings the plugin actually reads
+- fix: stop re-registering a cached pico on every start, which loses its matter placement
 
 ## v3.1.7 (2026-07-27)
 
