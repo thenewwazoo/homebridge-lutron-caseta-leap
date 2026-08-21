@@ -824,6 +824,15 @@ export class LutronCasetaLeap
     accessory.context.device = device
     accessory.context.bridgeID = bridge.bridgeID
 
+    // What the bridge says this device is, in one line. ButtonGroups is what
+    // decides whether a device's taps can drive HomeKit automations, and it is
+    // already in the definition, so this costs nothing and answers "can my
+    // switch trigger scenes?" without a code change every time it is asked.
+    this.log.debug(
+      `${fullName}: DeviceType ${device.DeviceType}, model ${device.ModelNumber || 'unknown'}, `
+      + `${device.ButtonGroups?.length ?? 0} button group(s), ${device.LocalZones?.length ?? 0} zone(s)`,
+    )
+
     if (this.isDeviceTypeExcluded(device.DeviceType)) {
       return Promise.resolve({
         kind: DeviceWireResultType.Skipped,

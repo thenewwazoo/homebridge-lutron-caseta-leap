@@ -73,6 +73,35 @@ describe('device type routing', () => {
     expect(result.reason).toContain('not supported by this plugin')
   })
 
+  it('reports what the bridge said a device can do, whatever type it is', () => {
+    // Asked on #270: can a wall dimmer's taps drive other accessories? That is
+    // decided by whether the bridge reports button groups for it, which is
+    // already in the device definition - so say so rather than guessing.
+    const { platform, log } = makePlatform()
+    const device = makeDevice('DivaSmartDimmer')
+    device.ButtonGroups = [{ href: '/buttongroup/1' }]
+
+    return platform.wireAccessory({ context: {} } as any, {} as any, device).then(() => {
+      const line = log.debug.mock.calls.map((c: any[]) => c.join(' ')).join('\n')
+      expect(line).toContain('DivaSmartDimmer')
+      expect(line).toContain('1 button group(s)')
+      expect(line).toContain('1 zone(s)')
+    })
+  })
+
+  it('says zero rather than falling over when a device reports no buttons at all', () => {
+    const { platform, log } = makePlatform()
+    const device = makeDevice('SomeFutureThing')
+    delete device.ButtonGroups
+    delete device.LocalZones
+
+    return platform.wireAccessory({ context: {} } as any, {} as any, device).then(() => {
+      const line = log.debug.mock.calls.map((c: any[]) => c.join(' ')).join('\n')
+      expect(line).toContain('0 button group(s)')
+      expect(line).toContain('0 zone(s)')
+    })
+  })
+
   it('offers every routed dimmer type in the exclusion list', () => {
     // A type the plugin wires but does not offer here cannot be turned off,
     // which is the half of the change that is easy to forget.
