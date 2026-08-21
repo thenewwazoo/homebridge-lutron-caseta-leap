@@ -198,6 +198,7 @@ export class LutronCasetaLeapMatterPlatform extends LutronCasetaLeap {
         clusters = OccupancySensor.getMatterClusters()
         break
       }
+      case 'DivaSmartDimmer':
       case 'WallDimmer': {
         matterFields = {
           deviceType: mApi.deviceTypes.DimmableLight,

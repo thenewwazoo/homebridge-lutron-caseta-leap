@@ -50,6 +50,7 @@
               "type": "string",
               "enum": [
                 "WallDimmer",
+                "DivaSmartDimmer",
                 "WallSwitch",
                 "SerenaTiltOnlyWoodBlind",
                 "RPSOccupancySensor",
@@ -212,6 +213,7 @@
           "description": "Select one or more device types to exclude from registration.",
           "titleMap": [
             { "name": "WallDimmer", "value": "WallDimmer" },
+            { "name": "DivaSmartDimmer", "value": "DivaSmartDimmer" },
             { "name": "WallSwitch", "value": "WallSwitch" },
             { "name": "SerenaTiltOnlyWoodBlind", "value": "SerenaTiltOnlyWoodBlind" },
             { "name": "RPSOccupancySensor", "value": "RPSOccupancySensor" },

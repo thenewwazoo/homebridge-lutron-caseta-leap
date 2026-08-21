@@ -1,3 +1,9 @@
+## v3.1.9 (Pending Release)
+
+### Changed
+
+- feat: support the diva smart dimmer, which the bridge reports as its own device type
+
 ## v3.1.8 (2026-08-09)
 
 ### Changed

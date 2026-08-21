@@ -832,8 +832,11 @@ export class LutronCasetaLeap
     }
 
     switch (device.DeviceType) {
+      // The Diva line speaks the same LEAP zone commands as the older wall
+      // dimmers - only the type string the bridge reports differs (#270)
+      case 'DivaSmartDimmer':
       case 'WallDimmer': {
-        this.log.info(`Found a WallDimmer ${fullName}`)
+        this.log.info(`Found a ${device.DeviceType} ${fullName}`)
         const dimmer = new (await import('./WallDimmer.js')).WallDimmer(this, accessory, bridge, device)
         if (typeof dimmer.initialize === 'function') {
           return dimmer.initialize()
