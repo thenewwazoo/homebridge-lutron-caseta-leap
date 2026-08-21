@@ -4,6 +4,7 @@
 
 - feat: support the diva smart dimmer, which the bridge reports as its own device type
 - feat: log what the bridge says each device can do, so button and zone support is visible
+- chore(deps): dependency updates
 
 ## v3.1.8 (2026-08-09)
 
