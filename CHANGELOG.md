@@ -1,3 +1,9 @@
+## v3.2.1 (Pending Release)
+
+### Changed
+
+- fix: send one command when homekit turns a dimmer on at a set brightness, instead of two that race
+
 ## v3.2.0 (2026-08-21)
 
 ### Changed
