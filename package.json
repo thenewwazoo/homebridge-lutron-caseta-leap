@@ -45,7 +45,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@homebridge/plugin-ui-utils": "^2.2.5",
+    "@homebridge/plugin-ui-utils": "^2.2.6",
     "lutron-leap": "^3.6.1",
     "node-forge": "^1.4.0",
     "typed-emitter": "^2.1.0"

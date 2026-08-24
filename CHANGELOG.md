@@ -3,6 +3,7 @@
 ### Changed
 
 - fix: send one command when homekit turns a dimmer on at a set brightness, instead of two that race
+- chore(deps): dependency updates
 
 ## v3.2.0 (2026-08-21)
 
